@@ -1,24 +1,24 @@
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { Card } from '../../components/Card'
 import { useTelegram } from '../../hooks/useTelegram'
+import { api } from '../../api/client'
 
 const BET_OPTIONS = [100, 500, 1000, 5000, 10000]
-
 const LEVELS = [
-  { id: 'easy', name: '🟢 Лёгкий', mines: 3, step: 0.15 },
-  { id: 'medium', name: '🟡 Средний', mines: 5, step: 0.25 },
-  { id: 'hard', name: '🔴 Хардкор', mines: 10, step: 0.5 },
+  { id: 'easy', name: '🟢 Лёгкий', mines: 3 },
+  { id: 'medium', name: '🟡 Средний', mines: 5 },
+  { id: 'hard', name: '🔴 Хардкор', mines: 10 },
 ]
 
 interface MinesProps {
   onBack: () => void
 }
 
-type Cell = { mine: boolean; opened: boolean; exploded: boolean }
+type Cell = { opened: boolean; mine: boolean; exploded: boolean }
 
 export function Mines({ onBack }: MinesProps) {
-  const { haptic, hapticSuccess, hapticError } = useTelegram()
+  const { userId, haptic, hapticSuccess, hapticError } = useTelegram()
   const [bet, setBet] = useState(1000)
   const [level, setLevel] = useState('easy')
   const [playing, setPlaying] = useState(false)
@@ -26,22 +26,19 @@ export function Mines({ onBack }: MinesProps) {
   const [mult, setMult] = useState(1)
   const [result, setResult] = useState<{ win: boolean; amount: number } | null>(null)
 
-  const currentLevel = LEVELS.find((l) => l.id === level)!
-
-  const startGame = () => {
+  const startGame = async () => {
     haptic('medium')
-    const minesCount = currentLevel.mines
-    const positions = Array.from({ length: 25 }, (_, i) => i)
-    // Перемешиваем
-    for (let i = positions.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1))
-      ;[positions[i], positions[j]] = [positions[j], positions[i]]
-    }
-    const minePositions = new Set(positions.slice(0, minesCount))
 
-    const newField: Cell[] = Array.from({ length: 25 }, (_, i) => ({
-      mine: minePositions.has(i),
+    const res = await api.minesStart(userId, bet, level) as any
+    if (!res || res.error) {
+      hapticError()
+      alert(res?.error || 'Ошибка старта')
+      return
+    }
+
+    const newField: Cell[] = Array.from({ length: 25 }, () => ({
       opened: false,
+      mine: false,
       exploded: false,
     }))
 
@@ -55,41 +52,60 @@ export function Mines({ onBack }: MinesProps) {
     if (!playing || field[index].opened) return
     haptic('light')
 
-    const cell = field[index]
-    const newField = [...field]
-    newField[index] = { ...cell, opened: true }
+    const res = await api.minesOpen(userId, index) as any
+    if (!res || res.error) {
+      hapticError()
+      alert(res?.error || 'Ошибка')
+      return
+    }
 
-    if (cell.mine) {
-      // Проигрыш
-      newField[index].exploded = true
-      setField(newField)
+    const newField = [...field]
+    newField[index] = { ...newField[index], opened: true, mine: res.mine, exploded: res.mine }
+    setField(newField)
+
+    if (res.mine) {
+      // Проигрыш — открываем все мины
+      if (res.mines) {
+        res.mines.forEach((mIdx: number) => {
+          if (newField[mIdx]) newField[mIdx].opened = true
+        })
+        setField(newField)
+      }
       setPlaying(false)
       setResult({ win: false, amount: bet })
       hapticError()
       return
     }
 
-    // Открыл безопасную
-    const openedCount = newField.filter((c) => c.opened && !c.mine).length
-    const newMult = 1 + openedCount * currentLevel.step
+    setMult(res.mult)
 
-    setField(newField)
-    setMult(newMult)
-
-    // Все безопасные открыты?
-    const safeCells = 25 - currentLevel.mines
-    if (openedCount === safeCells) {
+    if (res.cashout_auto) {
       setPlaying(false)
-      setResult({ win: true, amount: Math.floor(bet * newMult) })
+      setResult({ win: true, amount: res.amount })
       hapticSuccess()
     }
   }
 
-  const cashout = () => {
+  const cashout = async () => {
     if (!playing) return
+    haptic('medium')
+
+    const res = await api.minesCashout(userId) as any
+    if (!res || res.error) {
+      hapticError()
+      alert(res?.error || 'Ошибка')
+      return
+    }
+
     hapticSuccess()
     setPlaying(false)
-    setResult({ win: true, amount: Math.floor(bet * mult) })
+    setResult({ win: true, amount: res.amount })
+  }
+
+  const reset = () => {
+    setResult(null)
+    setField([])
+    setMult(1)
   }
 
   const fmtNumber = (n: number) => n.toLocaleString('ru-RU').replace(/,/g, ' ')
@@ -106,8 +122,8 @@ export function Mines({ onBack }: MinesProps) {
         </div>
       </Card>
 
-      {/* Игровое поле */}
-      {playing && (
+      {/* Поле */}
+      {playing && field.length > 0 && (
         <Card className="mt-4">
           <div className="grid grid-cols-5 gap-1.5 p-1">
             {field.map((cell, i) => (
@@ -124,11 +140,7 @@ export function Mines({ onBack }: MinesProps) {
                     : 'bg-green-700'
                 }`}
               >
-                {cell.opened
-                  ? cell.mine
-                    ? cell.exploded ? '💥' : '💣'
-                    : '💎'
-                  : ''}
+                {cell.opened ? (cell.mine ? (cell.exploded ? '💥' : '💣') : '💎') : ''}
               </motion.button>
             ))}
           </div>
@@ -140,7 +152,9 @@ export function Mines({ onBack }: MinesProps) {
             </div>
             <div className="bg-casino-bg rounded-xl py-3">
               <div className="text-casino-muted text-xs">Забрать</div>
-              <div className="text-casino-green font-bold text-xl">{fmtNumber(Math.floor(bet * mult))}</div>
+              <div className="text-casino-green font-bold text-xl">
+                {fmtNumber(Math.floor(bet * mult))}
+              </div>
             </div>
           </div>
 
@@ -161,9 +175,13 @@ export function Mines({ onBack }: MinesProps) {
           className="mt-4 text-center"
         >
           {result.win ? (
-            <div className="text-2xl font-bold text-casino-green">🎉 +{fmtNumber(result.amount)} 💎</div>
+            <div className="text-2xl font-bold text-casino-green">
+              🎉 +{fmtNumber(result.amount - bet)} 💎
+            </div>
           ) : (
-            <div className="text-2xl font-bold text-casino-red">💥 МИНА! -{fmtNumber(result.amount)} 💎</div>
+            <div className="text-2xl font-bold text-casino-red">
+              💥 МИНА! -{fmtNumber(result.amount)} 💎
+            </div>
           )}
         </motion.div>
       )}
@@ -217,7 +235,7 @@ export function Mines({ onBack }: MinesProps) {
 
       {!playing && result && (
         <button
-          onClick={() => { setResult(null); setField([]); setMult(1) }}
+          onClick={reset}
           className="w-full mt-4 bg-gradient-to-r from-casino-gold to-casino-gold2 text-black font-bold py-4 rounded-xl text-lg active:scale-95 transition-transform"
         >
           🔄 ЕЩЁ РАЗ

@@ -2,11 +2,8 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Card } from '../../components/Card'
 import { useTelegram } from '../../hooks/useTelegram'
+import { api } from '../../api/client'
 
-const SYMBOLS = ['🍒', '🍋', '🍊', '🍇', '💎', '7️⃣']
-const MULTIPLIERS: Record<string, number> = {
-  '🍒': 10, '🍋': 15, '🍊': 20, '🍇': 25, '💎': 50, '7️⃣': 100
-}
 const BET_OPTIONS = [100, 500, 1000, 5000, 10000]
 
 interface SlotsProps {
@@ -14,13 +11,14 @@ interface SlotsProps {
 }
 
 export function Slots({ onBack }: SlotsProps) {
-  const { haptic, hapticSuccess, hapticError } = useTelegram()
+  const { userId, haptic, hapticSuccess, hapticError } = useTelegram()
   const [bet, setBet] = useState(1000)
   const [playing, setPlaying] = useState(false)
   const [reels, setReels] = useState(['❓', '❓', '❓'])
   const [stopped, setStopped] = useState([false, false, false])
-  const [result, setResult] = useState<{ win: boolean; mult: number; amount: number } | null>(null)
+  const [result, setResult] = useState<{ win: boolean; amount: number; mult?: number } | null>(null)
 
+  const SYMBOLS = ['🍒', '🍋', '🍊', '🍇', '💎', '7️⃣']
   const spinOne = () => SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]
 
   const handleSpin = async () => {
@@ -30,15 +28,24 @@ export function Slots({ onBack }: SlotsProps) {
     setResult(null)
     setStopped([false, false, false])
 
-    const final = [spinOne(), spinOne(), spinOne()]
-
-    // Фаза 1: все крутятся (5 кадров)
+    // Фаза 1: все крутятся
     for (let i = 0; i < 5; i++) {
       setReels([spinOne(), spinOne(), spinOne()])
       await new Promise((r) => setTimeout(r, 150))
     }
 
-    // Фаза 2: останавливаем по одному
+    // Запрос к API
+    const res = await api.gameSlots(userId, bet) as any
+    if (!res || res.error) {
+      hapticError()
+      alert(res?.error || 'Ошибка игры')
+      setPlaying(false)
+      return
+    }
+
+    const final = res.reels || ['🍒', '🍒', '🍒']
+
+    // Останавливаем по одному
     setReels([final[0], spinOne(), spinOne()])
     setStopped([true, false, false])
     await new Promise((r) => setTimeout(r, 400))
@@ -51,19 +58,17 @@ export function Slots({ onBack }: SlotsProps) {
     setStopped([true, true, true])
     await new Promise((r) => setTimeout(r, 300))
 
-    // Расчёт
+    // Расчёт множителя
     let mult = 0
     if (final[0] === final[1] && final[1] === final[2]) {
-      mult = MULTIPLIERS[final[0]] || 10
+      mult = {'🍒': 10, '🍋': 15, '🍊': 20, '🍇': 25, '💎': 50, '7️⃣': 100}[final[0] as keyof typeof { '🍒': 10 }] || 10
     } else if (final[0] === final[1] || final[1] === final[2] || final[0] === final[2]) {
       mult = 2
     }
 
-    const isWin = mult > 0
-    const amount = bet * mult
-    setResult({ win: isWin, mult, amount })
+    setResult({ win: res.win, amount: res.amount, mult: res.win ? mult : 0 })
 
-    if (isWin) hapticSuccess()
+    if (res.win) hapticSuccess()
     else hapticError()
 
     setPlaying(false)
@@ -71,13 +76,18 @@ export function Slots({ onBack }: SlotsProps) {
 
   const fmtNumber = (n: number) => n.toLocaleString('ru-RU').replace(/,/g, ' ')
 
+  const reset = () => {
+    setResult(null)
+    setReels(['❓', '❓', '❓'])
+    setStopped([false, false, false])
+  }
+
   return (
     <div className="p-4">
       <button onClick={onBack} className="text-casino-muted mb-4 text-sm">
         ← Назад к играм
       </button>
 
-      {/* Заголовок */}
       <Card>
         <div className="text-center py-3">
           <div className="text-3xl font-bold text-casino-gold">🎰 СЛОТЫ</div>
@@ -91,9 +101,7 @@ export function Slots({ onBack }: SlotsProps) {
             {reels.map((symbol, i) => (
               <motion.div
                 key={i}
-                animate={{
-                  scale: stopped[i] ? [1, 1.2, 1] : 1,
-                }}
+                animate={{ scale: stopped[i] ? [1, 1.2, 1] : 1 }}
                 transition={{ duration: 0.3 }}
                 className={`w-20 h-24 bg-casino-bg border-2 rounded-xl flex items-center justify-center text-5xl ${
                   stopped[i] ? 'border-casino-gold' : 'border-casino-border'
@@ -117,7 +125,7 @@ export function Slots({ onBack }: SlotsProps) {
             <>
               <div className="text-2xl font-bold text-casino-green">🎉 ВЫИГРЫШ!</div>
               <div className="text-casino-gold text-xl font-bold mt-2">
-                ×{result.mult} → +{fmtNumber(result.amount)} 💎
+                +{fmtNumber(result.amount - bet)} 💎
               </div>
             </>
           ) : (
@@ -140,9 +148,7 @@ export function Slots({ onBack }: SlotsProps) {
                   key={b}
                   onClick={() => { haptic('light'); setBet(b) }}
                   className={`flex-shrink-0 px-4 py-2 rounded-xl font-bold text-sm ${
-                    bet === b
-                      ? 'bg-casino-gold text-black'
-                      : 'bg-casino-bg border border-casino-border text-casino-muted'
+                    bet === b ? 'bg-casino-gold text-black' : 'bg-casino-bg border border-casino-border text-casino-muted'
                   }`}
                 >
                   {fmtNumber(b)}
@@ -162,7 +168,7 @@ export function Slots({ onBack }: SlotsProps) {
 
       {!playing && result && (
         <button
-          onClick={() => { setResult(null); setReels(['❓', '❓', '❓']); setStopped([false, false, false]) }}
+          onClick={reset}
           className="w-full mt-4 bg-gradient-to-r from-casino-gold to-casino-gold2 text-black font-bold py-4 rounded-xl text-lg active:scale-95 transition-transform"
         >
           🔄 ЕЩЁ РАЗ

@@ -40,6 +40,7 @@ export const api = {
   getCases: () => apiGet('/api/cases'),
   buyCase: (userId: number, caseId: string) => 
     apiPost('/api/cases/buy', { user_id: userId, case_id: caseId }),
+  getLastReward: (userId: number) => apiGet(`/api/cases/last_reward/${userId}`),
   
   // Инвентарь
   getInventory: (userId: number) => apiGet(`/api/inventory/${userId}`),
@@ -56,4 +57,23 @@ export const api = {
   
   // Рынок
   getMarketLots: () => apiGet('/api/market/lots'),
+  
+  // ═══════════════ ИГРЫ ═══════════════
+  gameRoulette: (userId: number, bet: number, choice: string) => 
+    apiPost('/api/game/roulette', { user_id: userId, bet, choice }),
+  
+  gameSlots: (userId: number, bet: number) => 
+    apiPost('/api/game/slots', { user_id: userId, bet }),
+  
+  gameCoin: (userId: number, bet: number, choice: string) => 
+    apiPost('/api/game/coin', { user_id: userId, bet, choice }),
+  
+  minesStart: (userId: number, bet: number, level: string) => 
+    apiPost('/api/game/mines/start', { user_id: userId, bet, level }),
+  
+  minesOpen: (userId: number, idx: number) => 
+    apiPost('/api/game/mines/open', { user_id: userId, idx }),
+  
+  minesCashout: (userId: number) => 
+    apiPost('/api/game/mines/cashout', { user_id: userId }),
 }

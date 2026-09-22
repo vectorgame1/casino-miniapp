@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { Card } from '../../components/Card'
 import { useTelegram } from '../../hooks/useTelegram'
+import { api } from '../../api/client'
 
 const BET_OPTIONS = [100, 500, 1000, 5000, 10000]
 
@@ -12,13 +13,14 @@ interface CoinProps {
 type Side = 'heads' | 'tails'
 
 export function Coin({ onBack }: CoinProps) {
-  const { haptic, hapticSuccess, hapticError } = useTelegram()
+  const { userId, haptic, hapticSuccess, hapticError } = useTelegram()
   const [bet, setBet] = useState(1000)
   const [choice, setChoice] = useState<Side>('heads')
   const [playing, setPlaying] = useState(false)
   const [flipping, setFlipping] = useState(false)
   const [result, setResult] = useState<Side | null>(null)
   const [win, setWin] = useState<boolean | null>(null)
+  const [amount, setAmount] = useState(0)
 
   const handleFlip = async () => {
     if (playing) return
@@ -26,23 +28,37 @@ export function Coin({ onBack }: CoinProps) {
     setPlaying(true)
     setResult(null)
     setWin(null)
+    setAmount(0)
     setFlipping(true)
 
-    // Вращение 2 секунды
+    // Анимация
     await new Promise((r) => setTimeout(r, 2000))
 
-    // Результат
-    const r: Side = Math.random() < 0.5 ? 'heads' : 'tails'
-    const isWin = r === choice
+    // Запрос к API
+    const res = await api.gameCoin(userId, bet, choice) as any
+    if (!res || res.error) {
+      hapticError()
+      alert(res?.error || 'Ошибка игры')
+      setFlipping(false)
+      setPlaying(false)
+      return
+    }
 
     setFlipping(false)
-    setResult(r)
-    setWin(isWin)
+    setResult(res.result)
+    setWin(res.win)
+    setAmount(res.amount)
 
-    if (isWin) hapticSuccess()
+    if (res.win) hapticSuccess()
     else hapticError()
 
     setPlaying(false)
+  }
+
+  const reset = () => {
+    setResult(null)
+    setWin(null)
+    setAmount(0)
   }
 
   const fmtNumber = (n: number) => n.toLocaleString('ru-RU').replace(/,/g, ' ')
@@ -56,7 +72,6 @@ export function Coin({ onBack }: CoinProps) {
         ← Назад к играм
       </button>
 
-      {/* Заголовок */}
       <Card>
         <div className="text-center py-3">
           <div className="text-3xl font-bold text-casino-gold">🪙 МОНЕТКА</div>
@@ -76,8 +91,7 @@ export function Coin({ onBack }: CoinProps) {
             className="w-32 h-32 rounded-full flex items-center justify-center text-7xl"
             style={{
               background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FFD700 100%)',
-              boxShadow: '0 10px 40px rgba(255, 215, 0, 0.5), inset 0 0 20px rgba(184, 134, 11, 0.5)',
-              transformStyle: 'preserve-3d',
+              boxShadow: '0 10px 40px rgba(255, 215, 0, 0.5)',
             }}
           >
             {flipping ? '🪙' : result ? sideEmoji(result) : '🪙'}
@@ -85,7 +99,6 @@ export function Coin({ onBack }: CoinProps) {
         </div>
       </Card>
 
-      {/* Результат */}
       {result && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -93,15 +106,14 @@ export function Coin({ onBack }: CoinProps) {
           className="mt-4 text-center"
         >
           <div className="text-2xl font-bold">
-            🎯 Выпало: <span className="text-casino-gold">{sideName(result)} {sideEmoji(result)}</span>
+            🎯 {sideName(result)} {sideEmoji(result)}
           </div>
           <div className={`mt-3 text-xl font-bold ${win ? 'text-casino-green' : 'text-casino-red'}`}>
-            {win ? `🎉 +${fmtNumber(bet * 2)} 💎` : `😢 -${fmtNumber(bet)} 💎`}
+            {win ? `🎉 +${fmtNumber(amount - bet)} 💎` : `😢 -${fmtNumber(bet)} 💎`}
           </div>
         </motion.div>
       )}
 
-      {/* Ставки */}
       {!playing && !result && (
         <>
           <Card className="mt-4">
@@ -112,9 +124,7 @@ export function Coin({ onBack }: CoinProps) {
                   key={b}
                   onClick={() => { haptic('light'); setBet(b) }}
                   className={`flex-shrink-0 px-4 py-2 rounded-xl font-bold text-sm ${
-                    bet === b
-                      ? 'bg-casino-gold text-black'
-                      : 'bg-casino-bg border border-casino-border text-casino-muted'
+                    bet === b ? 'bg-casino-gold text-black' : 'bg-casino-bg border border-casino-border text-casino-muted'
                   }`}
                 >
                   {fmtNumber(b)}
@@ -156,7 +166,7 @@ export function Coin({ onBack }: CoinProps) {
 
       {!playing && result && (
         <button
-          onClick={() => { setResult(null); setWin(null) }}
+          onClick={reset}
           className="w-full mt-4 bg-gradient-to-r from-casino-gold to-casino-gold2 text-black font-bold py-4 rounded-xl text-lg active:scale-95 transition-transform"
         >
           🔄 ЕЩЁ РАЗ

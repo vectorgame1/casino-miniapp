@@ -1,18 +1,14 @@
-import { useState, useRef, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { useState, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Card } from '../../components/Card'
 import { useTelegram } from '../../hooks/useTelegram'
+import { api } from '../../api/client'
 
-// ═══════ Цвета и данные рулетки ═══════
 const RED = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]
-const BLACK = [2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35]
-
-// Европейская рулетка: 37 чисел. Порядок по колесу (стандартный):
 const WHEEL_ORDER = [
   0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10,
   5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26
 ]
-
 const BET_OPTIONS = [100, 500, 1000, 5000, 10000]
 
 type BetType = 'red' | 'black' | 'green'
@@ -22,13 +18,15 @@ interface RouletteProps {
 }
 
 export function Roulette({ onBack }: RouletteProps) {
-  const { haptic, hapticSuccess, hapticError } = useTelegram()
+  const { userId, haptic, hapticSuccess, hapticError } = useTelegram()
   const [bet, setBet] = useState(1000)
   const [betType, setBetType] = useState<BetType>('red')
   const [playing, setPlaying] = useState(false)
   const [rotation, setRotation] = useState(0)
   const [result, setResult] = useState<number | null>(null)
+  const [resultColor, setResultColor] = useState<string | null>(null)
   const [win, setWin] = useState<boolean | null>(null)
+  const [amount, setAmount] = useState(0)
   const rotationRef = useRef(0)
 
   const getColor = (n: number): 'red' | 'black' | 'green' => {
@@ -42,43 +40,51 @@ export function Roulette({ onBack }: RouletteProps) {
     setPlaying(true)
     setResult(null)
     setWin(null)
+    setAmount(0)
 
-    // 1. Выбираем число результата
-    const resultNumber = Math.floor(Math.random() * 37)
-    const color = getColor(resultNumber)
-    const isWin =
-      (betType === 'red' && color === 'red') ||
-      (betType === 'black' && color === 'black') ||
-      (betType === 'green' && color === 'green')
+    // Запрос к API
+    const res = await api.gameRoulette(userId, bet, betType) as any
+    if (!res || res.error) {
+      hapticError()
+      alert(res?.error || 'Ошибка игры')
+      setPlaying(false)
+      return
+    }
 
-    // 2. Определяем угол для выигрышного числа
+    // Определяем угол для выигрышного числа
     const segAngle = 360 / 37
-    const idx = WHEEL_ORDER.indexOf(resultNumber)
-    // Мы хотим, чтобы число оказалось под маркером (сверху, т.е. -90° от начала)
-    // Колесо вращается по часовой стрелке
+    const idx = WHEEL_ORDER.indexOf(res.result)
     const targetAngle = 360 * 5 + (360 - idx * segAngle) - segAngle / 2
 
-    // 3. Вращаем
-    const startRotation = rotationRef.current
-    const newRotation = startRotation + targetAngle
-
+    const newRotation = rotationRef.current + targetAngle
     setRotation(newRotation)
     rotationRef.current = newRotation
 
-    // 4. Ждём окончания анимации (5 сек)
+    // Ждём анимацию (5 сек)
     await new Promise((r) => setTimeout(r, 5000))
 
-    // 5. Показываем результат
-    setResult(resultNumber)
-    setWin(isWin)
-    if (isWin) hapticSuccess()
+    // Показываем результат
+    setResult(res.result)
+    setResultColor(res.color)
+    setWin(res.win)
+    setAmount(res.amount)
+
+    if (res.win) hapticSuccess()
     else hapticError()
+
     setPlaying(false)
+  }
+
+  const resetGame = () => {
+    setResult(null)
+    setWin(null)
+    setAmount(0)
+    setResultColor(null)
   }
 
   const fmtNumber = (n: number) => n.toLocaleString('ru-RU').replace(/,/g, ' ')
 
-  // ═══════ Отрисовка колеса через SVG ═══════
+  // SVG-колесо
   const size = 280
   const center = size / 2
   const radius = center - 10
@@ -95,30 +101,27 @@ export function Roulette({ onBack }: RouletteProps) {
         ← Назад к играм
       </button>
 
-      {/* Заголовок */}
       <Card>
         <div className="text-center py-3">
           <div className="text-3xl font-bold text-casino-gold">🎡 РУЛЕТКА</div>
         </div>
       </Card>
 
-      {/* Колесо */}
+      {/* SVG-колесо */}
       <div className="flex justify-center my-6 relative">
-        {/* Маркер сверху */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10 text-3xl">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10 text-3xl text-casino-gold">
           ▼
         </div>
 
         <div
-          className="rounded-full shadow-2xl"
+          className="rounded-full"
           style={{
             transform: `rotate(${rotation}deg)`,
             transition: playing ? 'transform 5s cubic-bezier(0.17, 0.67, 0.4, 0.99)' : 'none',
-            filter: 'drop-shadow(0 0 20px rgba(255, 215, 0, 0.3))',
+            filter: 'drop-shadow(0 0 20px rgba(255, 215, 0, 0.4))',
           }}
         >
           <svg width={size} height={size}>
-            {/* Секторы */}
             {WHEEL_ORDER.map((num, i) => {
               const startAngle = i * segAngle
               const endAngle = startAngle + segAngle
@@ -130,11 +133,10 @@ export function Roulette({ onBack }: RouletteProps) {
 
               const p1 = polarToCartesian(center, center, radius, startAngle)
               const p2 = polarToCartesian(center, center, radius, endAngle)
-              const largeArc = segAngle > 180 ? 1 : 0
               const path = [
                 `M ${center} ${center}`,
                 `L ${p1.x} ${p1.y}`,
-                `A ${radius} ${radius} 0 ${largeArc} 1 ${p2.x} ${p2.y}`,
+                `A ${radius} ${radius} 0 0 1 ${p2.x} ${p2.y}`,
                 'Z'
               ].join(' ')
 
@@ -158,11 +160,7 @@ export function Roulette({ onBack }: RouletteProps) {
                 </g>
               )
             })}
-
-            {/* Внешнее кольцо */}
             <circle cx={center} cy={center} r={radius} fill="none" stroke="#FFD700" strokeWidth="3" />
-
-            {/* Центр */}
             <circle cx={center} cy={center} r={20} fill="#FFD700" stroke="#B8860B" strokeWidth="2" />
             <circle cx={center} cy={center} r={12} fill="#B8860B" />
           </svg>
@@ -170,28 +168,30 @@ export function Roulette({ onBack }: RouletteProps) {
       </div>
 
       {/* Результат */}
-      {result !== null && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.5 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center mb-4"
-        >
-          <div
-            className={`inline-block px-6 py-3 rounded-2xl font-bold text-2xl ${
-              getColor(result) === 'red' ? 'bg-red-600' :
-              getColor(result) === 'black' ? 'bg-gray-900 border-2 border-white' :
-              'bg-green-600'
-            }`}
+      <AnimatePresence>
+        {result !== null && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="text-center mb-4"
           >
-            {result}
-          </div>
-          <div className={`mt-3 text-xl font-bold ${win ? 'text-casino-green' : 'text-casino-red'}`}>
-            {win
-              ? `🎉 +${fmtNumber(bet * (betType === 'green' ? 36 : 2))} 💎`
-              : `😢 -${fmtNumber(bet)} 💎`}
-          </div>
-        </motion.div>
-      )}
+            <div
+              className={`inline-block px-6 py-3 rounded-2xl font-bold text-2xl ${
+                resultColor === 'red' ? 'bg-red-600' :
+                resultColor === 'black' ? 'bg-gray-900 border-2 border-white' :
+                'bg-green-600'
+              }`}
+            >
+              {result}
+            </div>
+            <div className={`mt-3 text-xl font-bold ${win ? 'text-casino-green' : 'text-casino-red'}`}>
+              {win
+                ? `🎉 +${fmtNumber(amount - bet)} 💎`
+                : `😢 -${fmtNumber(bet)} 💎`}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Ставки */}
       {!playing && result === null && (
@@ -256,7 +256,7 @@ export function Roulette({ onBack }: RouletteProps) {
 
       {!playing && result !== null && (
         <button
-          onClick={() => { setResult(null); setWin(null) }}
+          onClick={resetGame}
           className="w-full bg-gradient-to-r from-casino-gold to-casino-gold2 text-black font-bold py-4 rounded-xl text-lg active:scale-95 transition-transform"
         >
           🔄 ЕЩЁ РАЗ
