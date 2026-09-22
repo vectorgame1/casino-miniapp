@@ -24,7 +24,7 @@ const TABS = [
 ]
 
 export function Inventory() {
-  const { userId, haptic, hapticSuccess, hapticError } = useTelegram()
+  const { userId, haptic, hapticSuccess } = useTelegram()
   const [items, setItems] = useState<InventoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('all')
@@ -50,11 +50,8 @@ export function Inventory() {
   const handleUse = async (item: InventoryItem) => {
     haptic('medium')
     setUsing(true)
-    // В реальности — POST к API /api/inventory/use
-    // Сейчас — имитация
     setTimeout(() => {
       hapticSuccess()
-      // Убираем из списка
       setItems(items.filter((i) => i.inv_id !== item.inv_id))
       setSelectedItem(null)
       setUsing(false)
@@ -89,7 +86,6 @@ export function Inventory() {
     <div className="p-4">
       <h1 className="text-2xl font-bold text-casino-gold mb-4">🎒 СКЛАД</h1>
 
-      {/* Табы */}
       <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
         {TABS.map((tab) => (
           <button
@@ -106,7 +102,6 @@ export function Inventory() {
         ))}
       </div>
 
-      {/* Список предметов */}
       {filteredItems.length === 0 ? (
         <Card>
           <div className="text-center py-8 text-casino-muted">
@@ -146,7 +141,6 @@ export function Inventory() {
         </div>
       )}
 
-      {/* Модалка действий */}
       <AnimatePresence>
         {selectedItem && (
           <motion.div

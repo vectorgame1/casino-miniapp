@@ -10,16 +10,13 @@ interface ShopItem {
   desc: string
   stars?: number | null
   tokens?: number | null
-  mult?: number
-  minutes?: number
-  title?: string
-  vip_level?: number
 }
 
 export function Shop() {
-  const { haptic, hapticSuccess } = useTelegram()
+  const { userId, haptic, hapticSuccess, hapticError } = useTelegram()
   const [items, setItems] = useState<ShopItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [buying, setBuying] = useState<string | null>(null)
 
   useEffect(() => {
     loadShop()
@@ -32,14 +29,36 @@ export function Shop() {
     setLoading(false)
   }
 
-  const handleBuy = (item: ShopItem, method: 'stars' | 'tokens') => {
+  const handleBuyStars = async (item: ShopItem) => {
+    if (buying) return
     haptic('medium')
-    if (method === 'stars') {
-      alert(`Купить "${item.name}" за ${item.stars} ⭐ (в Telegram откроется оплата)`)
+    setBuying(item.id)
+
+    const res = await api.buyShopItem(userId, item.id) as any
+    if (res && res.invoice_url) {
+      const tg = (window as any).Telegram?.WebApp
+      if (tg?.openInvoice) {
+        tg.openInvoice(res.invoice_url, (status: string) => {
+          if (status === 'paid') {
+            hapticSuccess()
+            alert('✅ Оплата прошла! Товар в складе.')
+          } else if (status === 'failed') {
+            hapticError()
+            alert('❌ Оплата не прошла')
+          } else if (status === 'cancelled') {
+            alert('❌ Оплата отменена')
+          }
+          setBuying(null)
+        })
+      } else {
+        alert('Оплата только в Telegram')
+        setBuying(null)
+      }
     } else {
-      alert(`Купить "${item.name}" за ${item.tokens?.toLocaleString('ru-RU')} 💎`)
+      hapticError()
+      alert('❌ Не удалось создать счёт')
+      setBuying(null)
     }
-    hapticSuccess()
   }
 
   const fmtNumber = (n: number) => n.toLocaleString('ru-RU').replace(/,/g, ' ')
@@ -64,10 +83,7 @@ export function Shop() {
 
       {items.length === 0 ? (
         <Card>
-          <div className="text-center py-8 text-casino-muted">
-            🛒 Магазин пуст
-            <div className="text-xs mt-2">Проверь соединение с ботом</div>
-          </div>
+          <div className="text-center py-8 text-casino-muted">Магазин пуст</div>
         </Card>
       ) : (
         items.map((item) => (
@@ -81,15 +97,16 @@ export function Shop() {
                 <div className="flex gap-2 mt-3">
                   {item.stars && (
                     <button
-                      onClick={() => handleBuy(item, 'stars')}
-                      className="flex-1 bg-gradient-to-r from-casino-gold to-casino-gold2 text-black font-bold py-2 px-3 rounded-xl text-sm active:scale-95 transition-transform"
+                      onClick={() => handleBuyStars(item)}
+                      disabled={!!buying}
+                      className="flex-1 bg-gradient-to-r from-casino-gold to-casino-gold2 text-black font-bold py-2 px-3 rounded-xl text-sm active:scale-95 transition-transform disabled:opacity-50"
                     >
-                      ⭐ {item.stars}
+                      {buying === item.id ? '⏳' : `⭐ ${item.stars}`}
                     </button>
                   )}
                   {item.tokens && (
                     <button
-                      onClick={() => handleBuy(item, 'tokens')}
+                      onClick={() => { haptic('medium'); alert('💎 Покупка за токены — скоро!') }}
                       className="flex-1 bg-casino-bg border border-casino-gold text-casino-gold font-bold py-2 px-3 rounded-xl text-sm active:scale-95 transition-transform"
                     >
                       💎 {fmtNumber(item.tokens)}
