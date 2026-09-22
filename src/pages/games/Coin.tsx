@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Card } from '../../components/Card'
 import { useTelegram } from '../../hooks/useTelegram'
 import { api } from '../../api/client'
@@ -31,11 +31,13 @@ export function Coin({ onBack }: CoinProps) {
     setAmount(0)
     setFlipping(true)
 
-    // Анимация
-    await new Promise((r) => setTimeout(r, 2000))
+    // Запрос к API (параллельно с анимацией)
+    const apiPromise = api.gameCoin(userId, bet, choice) as Promise<any>
 
-    // Запрос к API
-    const res = await api.gameCoin(userId, bet, choice) as any
+    // Анимация 2.5 сек
+    await new Promise((r) => setTimeout(r, 2500))
+
+    const res = await apiPromise
     if (!res || res.error) {
       hapticError()
       alert(res?.error || 'Ошибка игры')
@@ -62,9 +64,8 @@ export function Coin({ onBack }: CoinProps) {
   }
 
   const fmtNumber = (n: number) => n.toLocaleString('ru-RU').replace(/,/g, ' ')
-
-  const sideEmoji = (s: Side) => s === 'heads' ? '🦅' : '👑'
   const sideName = (s: Side) => s === 'heads' ? 'ОРЁЛ' : 'РЕШКА'
+  const sideEmoji = (s: Side) => s === 'heads' ? '🦅' : '👑'
 
   return (
     <div className="p-4">
@@ -78,42 +79,86 @@ export function Coin({ onBack }: CoinProps) {
         </div>
       </Card>
 
-      {/* Монетка */}
+      {/* 3D-Монетка */}
       <Card className="mt-4">
-        <div className="py-12 flex justify-center items-center h-48">
+        <div className="py-12 flex justify-center items-center h-56 relative">
+          {/* Свечение позади монеты */}
+          <div
+            className="absolute w-40 h-40 rounded-full"
+            style={{
+              background: 'radial-gradient(circle, rgba(255,215,0,0.4) 0%, transparent 70%)',
+              filter: 'blur(20px)',
+            }}
+          />
+
+          {/* Монета */}
           <motion.div
             animate={
               flipping
-                ? { rotateY: [0, 360, 720, 1080, 1440], scale: [1, 1.3, 1.1, 1.3, 1] }
+                ? {
+                    rotateY: [0, 360, 720, 1080, 1440],
+                    scale: [1, 1.4, 1.1, 1.4, 1],
+                  }
                 : { rotateY: 0, scale: 1 }
             }
-            transition={flipping ? { duration: 2, ease: 'easeInOut' } : { duration: 0.3 }}
-            className="w-32 h-32 rounded-full flex items-center justify-center text-7xl"
+            transition={
+              flipping
+                ? { duration: 2.5, ease: 'easeInOut' }
+                : { duration: 0.3 }
+            }
+            className="w-36 h-36 rounded-full flex items-center justify-center relative"
             style={{
-              background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FFD700 100%)',
-              boxShadow: '0 10px 40px rgba(255, 215, 0, 0.5)',
+              background: 'linear-gradient(135deg, #FFE066 0%, #FFD700 20%, #FFA500 50%, #FFD700 80%, #FFE066 100%)',
+              boxShadow:
+                'inset -8px -8px 20px rgba(184,134,11,0.7), inset 8px 8px 20px rgba(255,255,255,0.5), 0 10px 40px rgba(255,215,0,0.6)',
+              transformStyle: 'preserve-3d',
             }}
           >
-            {flipping ? '🪙' : result ? sideEmoji(result) : '🪙'}
+            {/* Внутреннее кольцо */}
+            <div
+              className="absolute inset-3 rounded-full"
+              style={{
+                border: '2px solid rgba(184,134,11,0.6)',
+                boxShadow: 'inset 0 0 10px rgba(184,134,11,0.4)',
+              }}
+            />
+
+            {/* Значок на монете */}
+            <div className="text-7xl relative z-10">
+              {flipping ? '🪙' : result ? sideEmoji(result) : '🪙'}
+            </div>
+
+            {/* Блик сверху */}
+            <div
+              className="absolute top-3 left-6 w-10 h-10 rounded-full opacity-60"
+              style={{
+                background: 'radial-gradient(circle, rgba(255,255,255,0.9) 0%, transparent 70%)',
+                filter: 'blur(4px)',
+              }}
+            />
           </motion.div>
         </div>
       </Card>
 
-      {result && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-4 text-center"
-        >
-          <div className="text-2xl font-bold">
-            🎯 {sideName(result)} {sideEmoji(result)}
-          </div>
-          <div className={`mt-3 text-xl font-bold ${win ? 'text-casino-green' : 'text-casino-red'}`}>
-            {win ? `🎉 +${fmtNumber(amount - bet)} 💎` : `😢 -${fmtNumber(bet)} 💎`}
-          </div>
-        </motion.div>
-      )}
+      {/* Результат */}
+      <AnimatePresence>
+        {result && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4 text-center"
+          >
+            <div className="text-3xl font-bold mb-2">
+              🎯 {sideName(result)} {sideEmoji(result)}
+            </div>
+            <div className={`text-xl font-bold ${win ? 'text-casino-green' : 'text-casino-red'}`}>
+              {win ? `🎉 +${fmtNumber(amount - bet)} 💎` : `😢 -${fmtNumber(bet)} 💎`}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
+      {/* Ставки */}
       {!playing && !result && (
         <>
           <Card className="mt-4">
