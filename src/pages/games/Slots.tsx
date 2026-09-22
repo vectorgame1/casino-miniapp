@@ -5,6 +5,15 @@ import { useTelegram } from '../../hooks/useTelegram'
 import { api } from '../../api/client'
 
 const BET_OPTIONS = [100, 500, 1000, 5000, 10000]
+const SYMBOLS = ['🍒', '🍋', '🍊', '🍇', '💎', '7️⃣']
+const MULTIPLIERS = {
+  '🍒': 10,
+  '🍋': 15,
+  '🍊': 20,
+  '🍇': 25,
+  '💎': 50,
+  '7️⃣': 100,
+}
 
 interface SlotsProps {
   onBack: () => void
@@ -14,12 +23,24 @@ export function Slots({ onBack }: SlotsProps) {
   const { userId, haptic, hapticSuccess, hapticError } = useTelegram()
   const [bet, setBet] = useState(1000)
   const [playing, setPlaying] = useState(false)
-  const [reels, setReels] = useState(['❓', '❓', '❓'])
-  const [stopped, setStopped] = useState([false, false, false])
-  const [result, setResult] = useState<{ win: boolean; amount: number; mult?: number } | null>(null)
+  const [reels, setReels] = useState<string[]>(['❓', '❓', '❓'])
+  const [stopped, setStopped] = useState<boolean[]>([false, false, false])
+  const [result, setResult] = useState<{ win: boolean; amount: number; mult: number } | null>(null)
 
-  const SYMBOLS = ['🍒', '🍋', '🍊', '🍇', '💎', '7️⃣']
-  const spinOne = () => SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]
+  const spinOne = (): string => {
+    const idx = Math.floor(Math.random() * SYMBOLS.length)
+    return SYMBOLS[idx]
+  }
+
+  const getMultiplier = (symbol: string): number => {
+    if (symbol === '🍒') return MULTIPLIERS['🍒']
+    if (symbol === '🍋') return MULTIPLIERS['🍋']
+    if (symbol === '🍊') return MULTIPLIERS['🍊']
+    if (symbol === '🍇') return MULTIPLIERS['🍇']
+    if (symbol === '💎') return MULTIPLIERS['💎']
+    if (symbol === '7️⃣') return MULTIPLIERS['7️⃣']
+    return 10
+  }
 
   const handleSpin = async () => {
     if (playing) return
@@ -43,7 +64,7 @@ export function Slots({ onBack }: SlotsProps) {
       return
     }
 
-    const final = res.reels || ['🍒', '🍒', '🍒']
+    const final: string[] = res.reels || ['🍒', '🍒', '🍒']
 
     // Останавливаем по одному
     setReels([final[0], spinOne(), spinOne()])
@@ -61,7 +82,7 @@ export function Slots({ onBack }: SlotsProps) {
     // Расчёт множителя
     let mult = 0
     if (final[0] === final[1] && final[1] === final[2]) {
-      mult = {'🍒': 10, '🍋': 15, '🍊': 20, '🍇': 25, '💎': 50, '7️⃣': 100}[final[0] as keyof typeof { '🍒': 10 }] || 10
+      mult = getMultiplier(final[0])
     } else if (final[0] === final[1] || final[1] === final[2] || final[0] === final[2]) {
       mult = 2
     }
@@ -94,7 +115,6 @@ export function Slots({ onBack }: SlotsProps) {
         </div>
       </Card>
 
-      {/* Барабаны */}
       <Card className="mt-4">
         <div className="py-8">
           <div className="flex justify-center gap-2">
@@ -114,7 +134,6 @@ export function Slots({ onBack }: SlotsProps) {
         </div>
       </Card>
 
-      {/* Результат */}
       {result && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -137,7 +156,6 @@ export function Slots({ onBack }: SlotsProps) {
         </motion.div>
       )}
 
-      {/* Ставка */}
       {!playing && !result && (
         <>
           <Card className="mt-4">
@@ -175,7 +193,6 @@ export function Slots({ onBack }: SlotsProps) {
         </button>
       )}
 
-      {/* Таблица выигрышей */}
       <Card className="mt-4 bg-casino-bg">
         <div className="text-casino-muted text-xs">
           <div className="font-bold mb-2">🎁 ВЫИГРЫШИ:</div>
