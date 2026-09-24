@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Card, StatCard } from '../components/Card'
 import { useTelegram } from '../hooks/useTelegram'
 import { api } from '../api/client'
@@ -26,6 +27,7 @@ export function Home({ onNavigate }: HomeProps) {
   const [dailyStatus, setDailyStatus] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [claiming, setClaiming] = useState(false)
+  const [showMore, setShowMore] = useState(false)
 
   useEffect(() => {
     if (!userId) { setLoading(false); return }
@@ -57,6 +59,10 @@ export function Home({ onNavigate }: HomeProps) {
 
   const handleCardClick = (tab: string) => {
     haptic('light')
+    if (tab === 'more') {
+      setShowMore(true)
+      return
+    }
     onNavigate?.(tab)
   }
 
@@ -117,56 +123,7 @@ export function Home({ onNavigate }: HomeProps) {
         </Card>
       ) : null}
 
-      {/* Быстрые разделы */}
-      <div className="grid grid-cols-2 gap-3">
-        <button onClick={() => handleCardClick('shop')} className="text-left active:scale-95 transition-transform">
-          <Card>
-            <div className="text-center py-2">
-              <div className="text-3xl mb-1">🛒</div>
-              <div className="text-sm font-medium">Магазин</div>
-            </div>
-          </Card>
-        </button>
-
-        <button onClick={() => handleCardClick('cases')} className="text-left active:scale-95 transition-transform">
-          <Card>
-            <div className="text-center py-2">
-              <div className="text-3xl mb-1">🎰</div>
-              <div className="text-sm font-medium">Кейсы</div>
-            </div>
-          </Card>
-        </button>
-
-        <button onClick={() => handleCardClick('inventory')} className="text-left active:scale-95 transition-transform">
-          <Card>
-            <div className="text-center py-2">
-              <div className="text-3xl mb-1">🎒</div>
-              <div className="text-sm font-medium">Склад</div>
-            </div>
-          </Card>
-        </button>
-
-        <button onClick={() => handleCardClick('top')} className="text-left active:scale-95 transition-transform">
-          <Card>
-            <div className="text-center py-2">
-              <div className="text-3xl mb-1">🏆</div>
-              <div className="text-sm font-medium">Топ</div>
-            </div>
-          </Card>
-        </button>
-
-        {/* ⚠️ РЫНОК — теперь ведёт на 'market', а не 'shop' */}
-        <button onClick={() => handleCardClick('market')} className="text-left active:scale-95 transition-transform col-span-2">
-          <Card>
-            <div className="text-center py-2">
-              <div className="text-3xl mb-1">🏪</div>
-              <div className="text-sm font-medium">Рынок</div>
-            </div>
-          </Card>
-        </button>
-      </div>
-
-      {/* БОЛЬШАЯ КНОПКА ИГРЫ — ВНИЗУ */}
+      {/* БОЛЬШАЯ КНОПКА ИГРЫ */}
       <button
         onClick={() => handleCardClick('games')}
         className="w-full active:scale-95 transition-transform"
@@ -184,6 +141,133 @@ export function Home({ onNavigate }: HomeProps) {
           </div>
         </div>
       </button>
+
+      {/* Быстрые разделы: 4 кнопки */}
+      <div className="grid grid-cols-2 gap-3">
+        <button onClick={() => handleCardClick('shop')} className="text-left active:scale-95 transition-transform">
+          <Card>
+            <div className="text-center py-2">
+              <div className="text-3xl mb-1">🛒</div>
+              <div className="text-sm font-medium">Магазин</div>
+            </div>
+          </Card>
+        </button>
+
+        <button onClick={() => handleCardClick('vip')} className="text-left active:scale-95 transition-transform">
+          <Card>
+            <div className="text-center py-2">
+              <div className="text-3xl mb-1">👑</div>
+              <div className="text-sm font-medium">VIP</div>
+            </div>
+          </Card>
+        </button>
+
+        <button onClick={() => handleCardClick('quests')} className="text-left active:scale-95 transition-transform">
+          <Card>
+            <div className="text-center py-2">
+              <div className="text-3xl mb-1">🎯</div>
+              <div className="text-sm font-medium">Задания</div>
+            </div>
+          </Card>
+        </button>
+
+        <button onClick={() => handleCardClick('top')} className="text-left active:scale-95 transition-transform">
+          <Card>
+            <div className="text-center py-2">
+              <div className="text-3xl mb-1">🏆</div>
+              <div className="text-sm font-medium">Топ</div>
+            </div>
+          </Card>
+        </button>
+      </div>
+
+      {/* Кнопка ЕЩЁ */}
+      <button onClick={() => handleCardClick('more')} className="w-full active:scale-95 transition-transform">
+        <Card>
+          <div className="flex items-center justify-between py-2">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">⚙️</span>
+              <div className="text-left">
+                <div className="text-sm font-bold">ЕЩЁ</div>
+                <div className="text-casino-muted text-xs">Кейсы · Склад · Буст XP · Турнир · Рынок</div>
+              </div>
+            </div>
+            <div className="text-casino-gold text-2xl">›</div>
+          </div>
+        </Card>
+      </button>
+
+      {/* Модалка ЕЩЁ */}
+      <AnimatePresence>
+        {showMore && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center p-4"
+            onClick={() => setShowMore(false)}
+          >
+            <motion.div
+              initial={{ y: 100, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 100, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+              className="bg-casino-card border border-casino-border rounded-3xl p-6 max-w-sm w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-xl font-bold text-casino-gold text-center mb-4">⚙️ ЕЩЁ</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => { setShowMore(false); onNavigate?.('cases') }} className="active:scale-95 transition-transform">
+                  <Card>
+                    <div className="text-center py-3">
+                      <div className="text-3xl mb-1">🎰</div>
+                      <div className="text-sm">Кейсы</div>
+                    </div>
+                  </Card>
+                </button>
+                <button onClick={() => { setShowMore(false); onNavigate?.('inventory') }} className="active:scale-95 transition-transform">
+                  <Card>
+                    <div className="text-center py-3">
+                      <div className="text-3xl mb-1">🎒</div>
+                      <div className="text-sm">Склад</div>
+                    </div>
+                  </Card>
+                </button>
+                <button onClick={() => { setShowMore(false); onNavigate?.('xp') }} className="active:scale-95 transition-transform">
+                  <Card>
+                    <div className="text-center py-3">
+                      <div className="text-3xl mb-1">⭐</div>
+                      <div className="text-sm">Буст XP</div>
+                    </div>
+                  </Card>
+                </button>
+                <button onClick={() => { setShowMore(false); onNavigate?.('tournament') }} className="active:scale-95 transition-transform">
+                  <Card>
+                    <div className="text-center py-3">
+                      <div className="text-3xl mb-1">🏆</div>
+                      <div className="text-sm">Турнир</div>
+                    </div>
+                  </Card>
+                </button>
+                <button onClick={() => { setShowMore(false); onNavigate?.('market') }} className="active:scale-95 transition-transform col-span-2">
+                  <Card>
+                    <div className="text-center py-3">
+                      <div className="text-3xl mb-1">🏪</div>
+                      <div className="text-sm">Рынок</div>
+                    </div>
+                  </Card>
+                </button>
+              </div>
+              <button
+                onClick={() => setShowMore(false)}
+                className="w-full bg-casino-bg border border-casino-border text-casino-muted font-bold py-3 rounded-xl mt-4"
+              >
+                ЗАКРЫТЬ
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

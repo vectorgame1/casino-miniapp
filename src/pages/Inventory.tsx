@@ -30,6 +30,9 @@ export function Inventory() {
   const [activeTab, setActiveTab] = useState('all')
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)
   const [using, setUsing] = useState(false)
+  const [sellItem, setSellItem] = useState<InventoryItem | null>(null)
+  const [sellPrice, setSellPrice] = useState('50000')
+  const [selling, setSelling] = useState(false)
 
   useEffect(() => {
     loadInventory()
@@ -141,6 +144,7 @@ export function Inventory() {
         </div>
       )}
 
+      {/* Модалка действий с предметом */}
       <AnimatePresence>
         {selectedItem && (
           <motion.div
@@ -174,13 +178,86 @@ export function Inventory() {
                   </button>
                 )}
                 <button
-                  onClick={() => { haptic('medium'); alert('Продажа — скоро') }}
+                  onClick={() => {
+                    haptic('medium')
+                    setSellItem(selectedItem)
+                    setSellPrice('50000')
+                    setSelectedItem(null)
+                  }}
                   className="w-full bg-casino-bg border border-casino-red text-casino-red font-bold py-3 rounded-xl active:scale-95 transition-transform"
                 >
                   💰 ПРОДАТЬ
                 </button>
                 <button
                   onClick={() => setSelectedItem(null)}
+                  className="w-full bg-casino-bg border border-casino-border text-casino-muted font-bold py-3 rounded-xl"
+                >
+                  ОТМЕНА
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Модалка продажи */}
+      <AnimatePresence>
+        {sellItem && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center p-4"
+            onClick={() => setSellItem(null)}
+          >
+            <motion.div
+              initial={{ y: 100, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 100, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+              className="bg-casino-card border border-casino-border rounded-3xl p-6 max-w-sm w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center mb-4">
+                <div className="text-5xl mb-2">{getItemIcon(sellItem.type)}</div>
+                <div className="font-bold">{getItemTitle(sellItem)}</div>
+              </div>
+
+              <div className="mb-4">
+                <label className="text-casino-muted text-sm">Цена (Tokens):</label>
+                <input
+                  type="number"
+                  value={sellPrice}
+                  onChange={(e) => setSellPrice(e.target.value)}
+                  className="w-full bg-casino-bg border border-casino-border rounded-xl px-4 py-3 mt-2 text-casino-text text-lg"
+                />
+                <div className="text-casino-muted text-xs mt-1">Минимум 10 000</div>
+              </div>
+
+              <div className="space-y-2">
+                <button
+                  onClick={async () => {
+                    const price = parseInt(sellPrice)
+                    if (!price || price < 10000) { alert('Минимум 10 000'); return }
+                    setSelling(true)
+                    const res = await api.sellInventoryItem(userId, sellItem.inv_id, price) as any
+                    if (res?.success) {
+                      hapticSuccess()
+                      setItems(items.filter((i) => i.inv_id !== sellItem.inv_id))
+                      setSellItem(null)
+                      alert(`✅ Лот выставлен за ${price.toLocaleString('ru-RU')} Tokens`)
+                    } else {
+                      alert(res?.error || 'Ошибка')
+                    }
+                    setSelling(false)
+                  }}
+                  disabled={selling}
+                  className="w-full bg-gradient-to-r from-casino-gold to-casino-gold2 text-black font-bold py-3 rounded-xl disabled:opacity-50"
+                >
+                  {selling ? '...' : '✅ ВЫСТАВИТЬ НА РЫНОК'}
+                </button>
+                <button
+                  onClick={() => setSellItem(null)}
                   className="w-full bg-casino-bg border border-casino-border text-casino-muted font-bold py-3 rounded-xl"
                 >
                   ОТМЕНА

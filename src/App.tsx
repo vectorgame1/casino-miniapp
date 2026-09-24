@@ -9,6 +9,10 @@ import { Top } from './pages/Top'
 import { Games } from './pages/Games'
 import { GamePlay } from './pages/GamePlay'
 import { Market } from './pages/Market'
+import { Vip } from './pages/Vip'
+import { XP } from './pages/XP'
+import { Quests } from './pages/Quests'
+import { Tournament } from './pages/Tournament'
 
 function App() {
   const { ready, expand } = useTelegram()
@@ -32,15 +36,19 @@ function App() {
 
   const renderPage = () => {
     switch (activeTab) {
-      case 'home':      return <Home onNavigate={handleNavigate} />
-      case 'games':     return <Games onNavigate={handleNavigate} />
-      case 'game_play': return <GamePlay gameId={currentGame || 'roulette'} onBack={() => handleNavigate('games')} />
-      case 'shop':      return <Shop />
-      case 'cases':     return <Cases />
-      case 'inventory': return <Inventory />
-      case 'top':       return <Top />
-      case 'market':    return <Market />
-      default:          return <Home onNavigate={handleNavigate} />
+      case 'home':       return <Home onNavigate={handleNavigate} />
+      case 'games':      return <Games onNavigate={handleNavigate} />
+      case 'game_play':  return <GamePlay gameId={currentGame || 'roulette'} onBack={() => handleNavigate('games')} />
+      case 'shop':       return <Shop />
+      case 'cases':      return <Cases />
+      case 'inventory':  return <Inventory />
+      case 'top':        return <Top />
+      case 'market':     return <Market />
+      case 'vip':        return <Vip />
+      case 'xp':         return <XP />
+      case 'quests':     return <Quests />
+      case 'tournament': return <Tournament />
+      default:           return <Home onNavigate={handleNavigate} />
     }
   }
 
