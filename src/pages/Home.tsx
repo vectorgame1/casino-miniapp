@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Card } from '../components/Card'
 import { Avatar } from '../components/Avatar'
 import { AnimatedNumber } from '../components/AnimatedNumber'
+import { BonusAnimation } from '../components/BonusAnimation'
 import { useTelegram } from '../hooks/useTelegram'
 import { api } from '../api/client'
 
@@ -29,7 +30,7 @@ export function Home({ onNavigate }: HomeProps) {
   const [loading, setLoading] = useState(true)
   const [claiming, setClaiming] = useState(false)
   const [showMore, setShowMore] = useState(false)
-  const [confetti, setConfetti] = useState(false)
+  const [bonusAnim, setBonusAnim] = useState(false)
 
   useEffect(() => {
     if (!userId) { setLoading(false); return }
@@ -54,8 +55,9 @@ export function Home({ onNavigate }: HomeProps) {
     const res = await api.claimDaily(userId)
     if (res && (res as any).success) {
       hapticSuccess()
-      setConfetti(true)
-      setTimeout(() => setConfetti(false), 3000)
+      // 🎬 ЗАПУСКАЕМ НОВУЮ АНИМАЦИЮ
+      setBonusAnim(true)
+      setTimeout(() => setBonusAnim(false), 3000)
       await loadData()
     }
     setClaiming(false)
@@ -75,13 +77,11 @@ export function Home({ onNavigate }: HomeProps) {
     return `${h}ч ${m}мин`
   }
 
-  // Расчёт XP-бара
   const xp = user?.xp || 0
   const level = Math.floor(xp / 100)
   const xpProgress = xp % 100
   const xpFill = Math.floor(xpProgress / 100 * 10)
 
-  // Ранг
   const getRank = (lvl: number) => {
     if (lvl < 5) return `🥉 Бронза ${['I','II','III'][Math.min(lvl, 2)]}`
     if (lvl < 10) return '🥈 Серебро III'
@@ -95,13 +95,8 @@ export function Home({ onNavigate }: HomeProps) {
     return '🖤 Чёрная карта'
   }
 
-  // VIP-иконка
   const vipIcon = {
     0: '', 1: '🥈', 2: '🥇', 3: '💎', 4: '💠', 5: '🖤',
-  }[user?.vip_tier || 0] || ''
-
-  const vipName = {
-    0: '', 1: 'Серебро', 2: 'Золото', 3: 'Платина', 4: 'Бриллиант', 5: 'Чёрная карта',
   }[user?.vip_tier || 0] || ''
 
   if (loading) {
@@ -117,40 +112,8 @@ export function Home({ onNavigate }: HomeProps) {
 
   return (
     <div className="p-4 space-y-4 relative">
-      {/* КОНФЕТТИ */}
-      <AnimatePresence>
-        {confetti && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 pointer-events-none z-50"
-          >
-            {[...Array(30)].map((_, i) => (
-              <motion.div
-                key={i}
-                initial={{
-                  x: Math.random() * window.innerWidth,
-                  y: -20,
-                  rotate: 0,
-                }}
-                animate={{
-                  y: window.innerHeight + 20,
-                  rotate: Math.random() * 720 - 360,
-                }}
-                transition={{
-                  duration: 2 + Math.random(),
-                  delay: Math.random() * 0.5,
-                  ease: 'easeIn',
-                }}
-                className="absolute text-2xl"
-              >
-                {['🎉', '💎', '⭐', '🎊', '💰'][Math.floor(Math.random() * 5)]}
-              </motion.div>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* 🎬 НОВАЯ АНИМАЦИЯ БОНУСА */}
+      <BonusAnimation show={bonusAnim} amount={10000} />
 
       {/* ПРОФИЛЬ */}
       <motion.div
@@ -158,7 +121,6 @@ export function Home({ onNavigate }: HomeProps) {
         animate={{ opacity: 1, y: 0 }}
       >
         <Card className="relative overflow-hidden">
-          {/* Декоративный градиент */}
           <div className="absolute top-0 right-0 w-40 h-40 bg-casino-gold/5 rounded-full blur-3xl -mr-20 -mt-20" />
 
           <div className="relative flex items-start gap-3">
@@ -186,7 +148,6 @@ export function Home({ onNavigate }: HomeProps) {
                 🎖 {getRank(level)}
               </div>
 
-              {/* XP-бар */}
               <div className="mt-2">
                 <div className="text-casino-muted text-[10px] mb-1 flex justify-between">
                   <span>XP: {xp}</span>
@@ -270,10 +231,7 @@ export function Home({ onNavigate }: HomeProps) {
 
       {/* БУСТ */}
       {user?.boost ? (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-        >
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <Card className="border-casino-green/50 bg-casino-green/5">
             <div className="flex items-center justify-center gap-2">
               <span className="text-2xl animate-pulse">⚡</span>
@@ -285,7 +243,7 @@ export function Home({ onNavigate }: HomeProps) {
         </motion.div>
       ) : null}
 
-      {/* КНОПКА ИГРЫ — БОЛЬШАЯ, ПУЛЬСИРУЕТ */}
+      {/* КНОПКА ИГРЫ */}
       <motion.button
         onClick={() => handleCardClick('games')}
         className="w-full active:scale-95 transition-transform relative"
