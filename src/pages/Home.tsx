@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Card, StatCard } from '../components/Card'
+import { Card } from '../components/Card'
+import { Avatar } from '../components/Avatar'
+import { AnimatedNumber } from '../components/AnimatedNumber'
 import { useTelegram } from '../hooks/useTelegram'
 import { api } from '../api/client'
 
@@ -10,10 +12,9 @@ interface UserData {
   bank: number
   unlimited: boolean
   xp: number
-  vip_level: number
-  vip_name: string
-  vip_icon: string
-  cashback: number
+  vip_tier: number
+  vip_expires?: string
+  cashback?: number
   boost?: { mult: number; until: string } | null
 }
 
@@ -22,12 +23,13 @@ interface HomeProps {
 }
 
 export function Home({ onNavigate }: HomeProps) {
-  const { userId, username, haptic, hapticSuccess } = useTelegram()
+  const { userId, username, firstName, photoUrl, haptic, hapticSuccess } = useTelegram()
   const [user, setUser] = useState<UserData | null>(null)
   const [dailyStatus, setDailyStatus] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [claiming, setClaiming] = useState(false)
   const [showMore, setShowMore] = useState(false)
+  const [confetti, setConfetti] = useState(false)
 
   useEffect(() => {
     if (!userId) { setLoading(false); return }
@@ -52,6 +54,8 @@ export function Home({ onNavigate }: HomeProps) {
     const res = await api.claimDaily(userId)
     if (res && (res as any).success) {
       hapticSuccess()
+      setConfetti(true)
+      setTimeout(() => setConfetti(false), 3000)
       await loadData()
     }
     setClaiming(false)
@@ -66,69 +70,236 @@ export function Home({ onNavigate }: HomeProps) {
     onNavigate?.(tab)
   }
 
-  const fmtNumber = (n: number) => n.toLocaleString('ru-RU').replace(/,/g, ' ')
   const formatTime = (s: number) => {
     const h = Math.floor(s / 3600); const m = Math.floor((s % 3600) / 60)
     return `${h}ч ${m}мин`
   }
 
-  if (loading) return <div className="flex items-center justify-center h-64 text-casino-muted">Загрузка...</div>
+  // Расчёт XP-бара
+  const xp = user?.xp || 0
+  const level = Math.floor(xp / 100)
+  const xpProgress = xp % 100
+  const xpFill = Math.floor(xpProgress / 100 * 10)
+
+  // Ранг
+  const getRank = (lvl: number) => {
+    if (lvl < 5) return `🥉 Бронза ${['I','II','III'][Math.min(lvl, 2)]}`
+    if (lvl < 10) return '🥈 Серебро III'
+    if (lvl < 15) return '🥈 Серебро II'
+    if (lvl < 20) return '🥈 Серебро I'
+    if (lvl < 25) return '🥇 Золото III'
+    if (lvl < 30) return '🥇 Золото II'
+    if (lvl < 35) return '🥇 Золото I'
+    if (lvl < 45) return '💎 Платина'
+    if (lvl < 55) return '💠 Бриллиант'
+    return '🖤 Чёрная карта'
+  }
+
+  // VIP-иконка
+  const vipIcon = {
+    0: '', 1: '🥈', 2: '🥇', 3: '💎', 4: '💠', 5: '🖤',
+  }[user?.vip_tier || 0] || ''
+
+  const vipName = {
+    0: '', 1: 'Серебро', 2: 'Золото', 3: 'Платина', 4: 'Бриллиант', 5: 'Чёрная карта',
+  }[user?.vip_tier || 0] || ''
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64 text-casino-muted">
+        <div className="text-center">
+          <div className="text-4xl mb-2 animate-pulse">🎰</div>
+          Загрузка...
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="p-4 space-y-4">
-      {/* Профиль */}
-      <Card>
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-casino-gold to-casino-gold2 flex items-center justify-center text-2xl">🎭</div>
-          <div className="flex-1">
-            <div className="font-bold text-lg">{username}</div>
-            <div className="text-casino-muted text-sm">
-              {user?.vip_icon || '🥉'} {user?.vip_name || 'Бронза'} · ⭐ {user?.xp || 0} XP
+    <div className="p-4 space-y-4 relative">
+      {/* КОНФЕТТИ */}
+      <AnimatePresence>
+        {confetti && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 pointer-events-none z-50"
+          >
+            {[...Array(30)].map((_, i) => (
+              <motion.div
+                key={i}
+                initial={{
+                  x: Math.random() * window.innerWidth,
+                  y: -20,
+                  rotate: 0,
+                }}
+                animate={{
+                  y: window.innerHeight + 20,
+                  rotate: Math.random() * 720 - 360,
+                }}
+                transition={{
+                  duration: 2 + Math.random(),
+                  delay: Math.random() * 0.5,
+                  ease: 'easeIn',
+                }}
+                className="absolute text-2xl"
+              >
+                {['🎉', '💎', '⭐', '🎊', '💰'][Math.floor(Math.random() * 5)]}
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ПРОФИЛЬ */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <Card className="relative overflow-hidden">
+          {/* Декоративный градиент */}
+          <div className="absolute top-0 right-0 w-40 h-40 bg-casino-gold/5 rounded-full blur-3xl -mr-20 -mt-20" />
+
+          <div className="relative flex items-start gap-3">
+            <Avatar
+              photoUrl={photoUrl}
+              username={username}
+              size={56}
+              vipLevel={user?.vip_tier || 0}
+              glow={true}
+            />
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="font-bold text-lg truncate">
+                  {firstName || username}
+                </div>
+                {vipIcon && (
+                  <span className="text-sm px-2 py-0.5 rounded-full bg-casino-gold/20 text-casino-gold border border-casino-gold/40">
+                    {vipIcon} VIP {user?.vip_tier}
+                  </span>
+                )}
+              </div>
+
+              <div className="text-casino-muted text-sm mt-0.5">
+                🎖 {getRank(level)}
+              </div>
+
+              {/* XP-бар */}
+              <div className="mt-2">
+                <div className="text-casino-muted text-[10px] mb-1 flex justify-between">
+                  <span>XP: {xp}</span>
+                  <span>Ур. {level}</span>
+                </div>
+                <div className="h-1.5 bg-casino-bg rounded-full overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${xpFill * 10}%` }}
+                    transition={{ duration: 1, ease: 'easeOut' }}
+                    className="h-full bg-gradient-to-r from-casino-gold to-casino-gold2"
+                  />
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      </motion.div>
 
-      {/* Баланс и Банк */}
+      {/* БАЛАНС И БАНК */}
       <div className="grid grid-cols-2 gap-3">
-        <StatCard icon="💎" label="Баланс" value={user?.unlimited ? '∞' : fmtNumber(user?.balance || 0)} />
-        <StatCard icon="🏦" label="Банк" value={fmtNumber(user?.bank || 0)} color="text-casino-text" />
+        <motion.div
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Card className="text-center">
+            <div className="text-2xl mb-1">💎</div>
+            <div className="text-xl font-bold text-casino-gold">
+              {user?.unlimited ? '∞' : <AnimatedNumber value={user?.balance || 0} format="short" />}
+            </div>
+            <div className="text-xs text-casino-muted mt-1">Баланс</div>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, x: 10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.15 }}
+        >
+          <Card className="text-center">
+            <div className="text-2xl mb-1">🏦</div>
+            <div className="text-xl font-bold text-casino-text">
+              <AnimatedNumber value={user?.bank || 0} format="short" />
+            </div>
+            <div className="text-xs text-casino-muted mt-1">Банк</div>
+          </Card>
+        </motion.div>
       </div>
 
-      {/* Бонус */}
+      {/* БОНУС */}
       {dailyStatus?.can_claim ? (
-        <Card className="border-casino-gold bg-gradient-to-r from-casino-gold/10 to-casino-gold2/10">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="font-bold text-casino-gold">🎁 Бонус доступен!</div>
-              <div className="text-casino-muted text-sm mt-1">+10 000 💎</div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Card className="border-casino-gold bg-gradient-to-r from-casino-gold/10 to-casino-gold2/10">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-bold text-casino-gold">🎁 Бонус доступен!</div>
+                <div className="text-casino-muted text-sm mt-1">+10 000 💎</div>
+              </div>
+              <button
+                onClick={handleClaimBonus}
+                disabled={claiming}
+                className="bg-gradient-to-r from-casino-gold to-casino-gold2 text-black font-bold px-4 py-2 rounded-xl disabled:opacity-50 active:scale-95 transition-transform shadow-gold"
+              >
+                {claiming ? '...' : 'ЗАБРАТЬ'}
+              </button>
             </div>
-            <button onClick={handleClaimBonus} disabled={claiming}
-              className="bg-gradient-to-r from-casino-gold to-casino-gold2 text-black font-bold px-4 py-2 rounded-xl disabled:opacity-50">
-              {claiming ? '...' : 'ЗАБРАТЬ'}
-            </button>
-          </div>
-        </Card>
+          </Card>
+        </motion.div>
       ) : dailyStatus ? (
-        <Card><div className="text-casino-muted">⏳ Бонус через <b className="text-casino-text">{formatTime(dailyStatus.time_left)}</b></div></Card>
-      ) : null}
-
-      {/* Буст */}
-      {user?.boost ? (
-        <Card className="border-casino-green/50">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">⚡</span>
-            <div className="font-bold text-casino-green">Буст ×{user.boost.mult} активен</div>
+        <Card>
+          <div className="text-casino-muted text-sm text-center">
+            ⏳ Бонус через <b className="text-casino-text">{formatTime(dailyStatus.time_left)}</b>
           </div>
         </Card>
       ) : null}
 
-      {/* БОЛЬШАЯ КНОПКА ИГРЫ */}
-      <button
+      {/* БУСТ */}
+      {user?.boost ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
+          <Card className="border-casino-green/50 bg-casino-green/5">
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-2xl animate-pulse">⚡</span>
+              <div className="font-bold text-casino-green">
+                Буст ×{user.boost.mult} активен
+              </div>
+            </div>
+          </Card>
+        </motion.div>
+      ) : null}
+
+      {/* КНОПКА ИГРЫ — БОЛЬШАЯ, ПУЛЬСИРУЕТ */}
+      <motion.button
         onClick={() => handleCardClick('games')}
-        className="w-full active:scale-95 transition-transform"
+        className="w-full active:scale-95 transition-transform relative"
+        animate={{
+          boxShadow: [
+            '0 0 20px rgba(255, 215, 0, 0.3)',
+            '0 0 40px rgba(255, 215, 0, 0.5)',
+            '0 0 20px rgba(255, 215, 0, 0.3)',
+          ],
+        }}
+        transition={{ duration: 2, repeat: Infinity }}
+        style={{ borderRadius: 16 }}
       >
-        <div className="bg-gradient-to-r from-casino-gold to-casino-gold2 rounded-2xl p-5 shadow-gold">
+        <div className="bg-gradient-to-r from-casino-gold to-casino-gold2 rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="text-4xl">🎮</span>
@@ -140,49 +311,42 @@ export function Home({ onNavigate }: HomeProps) {
             <div className="text-black text-3xl font-bold">›</div>
           </div>
         </div>
-      </button>
+      </motion.button>
 
-      {/* Быстрые разделы: 4 кнопки */}
+      {/* БЫСТРЫЕ КНОПКИ */}
       <div className="grid grid-cols-2 gap-3">
-        <button onClick={() => handleCardClick('shop')} className="text-left active:scale-95 transition-transform">
-          <Card>
-            <div className="text-center py-2">
-              <div className="text-3xl mb-1">🛒</div>
-              <div className="text-sm font-medium">Магазин</div>
-            </div>
-          </Card>
-        </button>
-
-        <button onClick={() => handleCardClick('vip')} className="text-left active:scale-95 transition-transform">
-          <Card>
-            <div className="text-center py-2">
-              <div className="text-3xl mb-1">👑</div>
-              <div className="text-sm font-medium">VIP</div>
-            </div>
-          </Card>
-        </button>
-
-        <button onClick={() => handleCardClick('quests')} className="text-left active:scale-95 transition-transform">
-          <Card>
-            <div className="text-center py-2">
-              <div className="text-3xl mb-1">🎯</div>
-              <div className="text-sm font-medium">Задания</div>
-            </div>
-          </Card>
-        </button>
-
-        <button onClick={() => handleCardClick('top')} className="text-left active:scale-95 transition-transform">
-          <Card>
-            <div className="text-center py-2">
-              <div className="text-3xl mb-1">🏆</div>
-              <div className="text-sm font-medium">Топ</div>
-            </div>
-          </Card>
-        </button>
+        {[
+          { id: 'shop', icon: '🛒', label: 'Магазин' },
+          { id: 'vip', icon: '👑', label: 'VIP' },
+          { id: 'quests', icon: '🎯', label: 'Задания' },
+          { id: 'top', icon: '🏆', label: 'Топ' },
+        ].map((btn, i) => (
+          <motion.button
+            key={btn.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 + i * 0.05 }}
+            onClick={() => handleCardClick(btn.id)}
+            className="active:scale-95 transition-transform text-left"
+          >
+            <Card>
+              <div className="text-center py-2">
+                <div className="text-3xl mb-1">{btn.icon}</div>
+                <div className="text-sm font-medium">{btn.label}</div>
+              </div>
+            </Card>
+          </motion.button>
+        ))}
       </div>
 
-      {/* Кнопка ЕЩЁ */}
-      <button onClick={() => handleCardClick('more')} className="w-full active:scale-95 transition-transform">
+      {/* КНОПКА ЕЩЁ */}
+      <motion.button
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+        onClick={() => handleCardClick('more')}
+        className="w-full active:scale-95 transition-transform"
+      >
         <Card>
           <div className="flex items-center justify-between py-2">
             <div className="flex items-center gap-3">
@@ -195,9 +359,9 @@ export function Home({ onNavigate }: HomeProps) {
             <div className="text-casino-gold text-2xl">›</div>
           </div>
         </Card>
-      </button>
+      </motion.button>
 
-      {/* Модалка ЕЩЁ */}
+      {/* МОДАЛКА ЕЩЁ */}
       <AnimatePresence>
         {showMore && (
           <motion.div
@@ -217,39 +381,29 @@ export function Home({ onNavigate }: HomeProps) {
             >
               <h3 className="text-xl font-bold text-casino-gold text-center mb-4">⚙️ ЕЩЁ</h3>
               <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => { setShowMore(false); onNavigate?.('cases') }} className="active:scale-95 transition-transform">
-                  <Card>
-                    <div className="text-center py-3">
-                      <div className="text-3xl mb-1">🎰</div>
-                      <div className="text-sm">Кейсы</div>
-                    </div>
-                  </Card>
-                </button>
-                <button onClick={() => { setShowMore(false); onNavigate?.('inventory') }} className="active:scale-95 transition-transform">
-                  <Card>
-                    <div className="text-center py-3">
-                      <div className="text-3xl mb-1">🎒</div>
-                      <div className="text-sm">Склад</div>
-                    </div>
-                  </Card>
-                </button>
-                <button onClick={() => { setShowMore(false); onNavigate?.('xp') }} className="active:scale-95 transition-transform">
-                  <Card>
-                    <div className="text-center py-3">
-                      <div className="text-3xl mb-1">⭐</div>
-                      <div className="text-sm">Буст XP</div>
-                    </div>
-                  </Card>
-                </button>
-                <button onClick={() => { setShowMore(false); onNavigate?.('tournament') }} className="active:scale-95 transition-transform">
-                  <Card>
-                    <div className="text-center py-3">
-                      <div className="text-3xl mb-1">🏆</div>
-                      <div className="text-sm">Турнир</div>
-                    </div>
-                  </Card>
-                </button>
-                <button onClick={() => { setShowMore(false); onNavigate?.('market') }} className="active:scale-95 transition-transform col-span-2">
+                {[
+                  { id: 'cases', icon: '🎰', label: 'Кейсы' },
+                  { id: 'inventory', icon: '🎒', label: 'Склад' },
+                  { id: 'xp', icon: '⭐', label: 'Буст XP' },
+                  { id: 'tournament', icon: '🏆', label: 'Турнир' },
+                ].map((btn) => (
+                  <button
+                    key={btn.id}
+                    onClick={() => { setShowMore(false); onNavigate?.(btn.id) }}
+                    className="active:scale-95 transition-transform"
+                  >
+                    <Card>
+                      <div className="text-center py-3">
+                        <div className="text-3xl mb-1">{btn.icon}</div>
+                        <div className="text-sm">{btn.label}</div>
+                      </div>
+                    </Card>
+                  </button>
+                ))}
+                <button
+                  onClick={() => { setShowMore(false); onNavigate?.('market') }}
+                  className="active:scale-95 transition-transform col-span-2"
+                >
                   <Card>
                     <div className="text-center py-3">
                       <div className="text-3xl mb-1">🏪</div>

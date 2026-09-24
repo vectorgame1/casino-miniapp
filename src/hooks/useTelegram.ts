@@ -29,9 +29,14 @@ export function useTelegram() {
   }
 
   return {
-    tg, user,
+    tg,
+    user,
     userId: user?.id || 0,
     username: user?.username || user?.first_name || 'Гость',
+    firstName: user?.first_name || '',
+    lastName: user?.last_name || '',
+    photoUrl: user?.photo_url,
+    isPremium: user?.is_premium || false,
     close, expand, ready, haptic, hapticSuccess, hapticError,
     isTelegram: !!tg?.initData,
   }
