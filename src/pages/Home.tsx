@@ -55,7 +55,6 @@ export function Home({ onNavigate }: HomeProps) {
     const res = await api.claimDaily(userId)
     if (res && (res as any).success) {
       hapticSuccess()
-      // 🎬 ЗАПУСКАЕМ НОВУЮ АНИМАЦИЮ
       setBonusAnim(true)
       setTimeout(() => setBonusAnim(false), 3000)
       await loadData()
@@ -73,15 +72,18 @@ export function Home({ onNavigate }: HomeProps) {
   }
 
   const formatTime = (s: number) => {
-    const h = Math.floor(s / 3600); const m = Math.floor((s % 3600) / 60)
+    const h = Math.floor(s / 3600)
+    const m = Math.floor((s % 3600) / 60)
     return `${h}ч ${m}мин`
   }
 
+  // Расчёт XP-бара
   const xp = user?.xp || 0
   const level = Math.floor(xp / 100)
   const xpProgress = xp % 100
   const xpFill = Math.floor(xpProgress / 100 * 10)
 
+  // Ранг
   const getRank = (lvl: number) => {
     if (lvl < 5) return `🥉 Бронза ${['I','II','III'][Math.min(lvl, 2)]}`
     if (lvl < 10) return '🥈 Серебро III'
@@ -95,6 +97,7 @@ export function Home({ onNavigate }: HomeProps) {
     return '🖤 Чёрная карта'
   }
 
+  // VIP-иконка
   const vipIcon = {
     0: '', 1: '🥈', 2: '🥇', 3: '💎', 4: '💠', 5: '🖤',
   }[user?.vip_tier || 0] || ''
@@ -112,7 +115,7 @@ export function Home({ onNavigate }: HomeProps) {
 
   return (
     <div className="p-4 space-y-4 relative">
-      {/* 🎬 НОВАЯ АНИМАЦИЯ БОНУСА */}
+      {/* 🎬 АНИМАЦИЯ БОНУСА */}
       <BonusAnimation show={bonusAnim} amount={10000} />
 
       {/* ПРОФИЛЬ */}
@@ -275,8 +278,8 @@ export function Home({ onNavigate }: HomeProps) {
       <div className="grid grid-cols-2 gap-3">
         {[
           { id: 'shop', icon: '🛒', label: 'Магазин' },
-          { id: 'vip', icon: '👑', label: 'VIP' },
           { id: 'quests', icon: '🎯', label: 'Задания' },
+          { id: 'inventory', icon: '🎒', label: 'Склад' },
           { id: 'top', icon: '🏆', label: 'Топ' },
         ].map((btn, i) => (
           <motion.button
@@ -311,7 +314,7 @@ export function Home({ onNavigate }: HomeProps) {
               <span className="text-2xl">⚙️</span>
               <div className="text-left">
                 <div className="text-sm font-bold">ЕЩЁ</div>
-                <div className="text-casino-muted text-xs">Кейсы · Склад · Буст XP · Турнир · Рынок</div>
+                <div className="text-casino-muted text-xs">Кейсы · Буст XP · Турнир · Рынок</div>
               </div>
             </div>
             <div className="text-casino-gold text-2xl">›</div>
@@ -339,28 +342,20 @@ export function Home({ onNavigate }: HomeProps) {
             >
               <h3 className="text-xl font-bold text-casino-gold text-center mb-4">⚙️ ЕЩЁ</h3>
               <div className="grid grid-cols-2 gap-3">
-                {[
-                  { id: 'cases', icon: '🎰', label: 'Кейсы' },
-                  { id: 'inventory', icon: '🎒', label: 'Склад' },
-                  { id: 'xp', icon: '⭐', label: 'Буст XP' },
-                  { id: 'tournament', icon: '🏆', label: 'Турнир' },
-                ].map((btn) => (
-                  <button
-                    key={btn.id}
-                    onClick={() => { setShowMore(false); onNavigate?.(btn.id) }}
-                    className="active:scale-95 transition-transform"
-                  >
-                    <Card>
-                      <div className="text-center py-3">
-                        <div className="text-3xl mb-1">{btn.icon}</div>
-                        <div className="text-sm">{btn.label}</div>
-                      </div>
-                    </Card>
-                  </button>
-                ))}
+                <button
+                  onClick={() => { setShowMore(false); onNavigate?.('tournament') }}
+                  className="active:scale-95 transition-transform"
+                >
+                  <Card>
+                    <div className="text-center py-3">
+                      <div className="text-3xl mb-1">🏆</div>
+                      <div className="text-sm">Турнир</div>
+                    </div>
+                  </Card>
+                </button>
                 <button
                   onClick={() => { setShowMore(false); onNavigate?.('market') }}
-                  className="active:scale-95 transition-transform col-span-2"
+                  className="active:scale-95 transition-transform"
                 >
                   <Card>
                     <div className="text-center py-3">

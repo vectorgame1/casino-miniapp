@@ -4,7 +4,6 @@ import { useTelegram } from '../hooks/useTelegram'
 const TABS = [
   { id: 'home', icon: '🏠', label: 'Главная' },
   { id: 'shop', icon: '🛒', label: 'Магазин' },
-  { id: 'cases', icon: '🎰', label: 'Кейсы' },
   { id: 'inventory', icon: '🎒', label: 'Склад' },
   { id: 'top', icon: '🏆', label: 'Топ' },
 ]
