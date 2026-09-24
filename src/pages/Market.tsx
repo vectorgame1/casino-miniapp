@@ -19,6 +19,8 @@ export function Market() {
   const [lots, setLots] = useState<MarketLot[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'browse' | 'mylots'>('browse')
+  const [buying, setBuying] = useState<string | null>(null)
+  const [removing, setRemoving] = useState<string | null>(null)
 
   useEffect(() => {
     loadLots()
@@ -31,10 +33,34 @@ export function Market() {
     setLoading(false)
   }
 
-  const handleBuy = (lot: MarketLot) => {
+  const handleBuy = async (lot: MarketLot) => {
+    if (buying) return
     haptic('medium')
-    alert(`Купить "${getLotTitle(lot)}" за ${fmtNumber(lot.price)} 💎 (в Telegram — реальная покупка)`)
-    hapticSuccess()
+    setBuying(lot.id)
+    const res = await api.buyMarketLot(userId, lot.id) as any
+    if (res?.success) {
+      hapticSuccess()
+      alert(res.message || `✅ Куплено за ${fmtNumber(lot.price)} Tokens`)
+      await loadLots()
+    } else {
+      alert(res?.error || '❌ Ошибка покупки')
+    }
+    setBuying(null)
+  }
+
+  const handleRemove = async (lot: MarketLot) => {
+    if (removing) return
+    if (!confirm(`Снять лот "${getLotTitle(lot)}"?\nПредмет вернётся на Склад.`)) return
+    haptic('medium')
+    setRemoving(lot.id)
+    const res = await api.removeMarketLot(userId, lot.id) as any
+    if (res?.success) {
+      hapticSuccess()
+      await loadLots()
+    } else {
+      alert(res?.error || '❌ Ошибка снятия лота')
+    }
+    setRemoving(null)
   }
 
   const fmtNumber = (n: number) => n.toLocaleString('ru-RU').replace(/,/g, ' ')
@@ -133,17 +159,19 @@ export function Market() {
                   {tab === 'browse' && (
                     <button
                       onClick={() => handleBuy(lot)}
-                      className="bg-gradient-to-r from-casino-gold to-casino-gold2 text-black font-bold px-4 py-2 rounded-xl text-sm active:scale-95"
+                      disabled={buying === lot.id}
+                      className="bg-gradient-to-r from-casino-gold to-casino-gold2 text-black font-bold px-4 py-2 rounded-xl text-sm active:scale-95 disabled:opacity-50"
                     >
-                      КУПИТЬ
+                      {buying === lot.id ? '...' : 'КУПИТЬ'}
                     </button>
                   )}
                   {tab === 'mylots' && (
                     <button
-                      onClick={() => alert('Снять лот — скоро')}
-                      className="bg-casino-bg border border-casino-red text-casino-red px-3 py-2 rounded-xl text-xs"
+                      onClick={() => handleRemove(lot)}
+                      disabled={removing === lot.id}
+                      className="bg-casino-bg border border-casino-red text-casino-red px-3 py-2 rounded-xl text-xs active:scale-95 disabled:opacity-50"
                     >
-                      СНЯТЬ
+                      {removing === lot.id ? '...' : 'СНЯТЬ'}
                     </button>
                   )}
                 </div>

@@ -59,6 +59,10 @@ export const api = {
 
   // Рынок
   getMarketLots: () => apiGet('/api/market/lots'),
+  buyMarketLot: (userId: number, lotId: string) =>
+    apiPost('/api/market/buy', { user_id: userId, lot_id: lotId }),
+  removeMarketLot: (userId: number, lotId: string) =>
+    apiPost('/api/market/remove', { user_id: userId, lot_id: lotId }),
 
   // ═══════════════ VIP ═══════════════
   getVipTiers: () => apiGet('/api/vip'),
