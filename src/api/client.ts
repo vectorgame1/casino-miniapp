@@ -64,23 +64,36 @@ export const api = {
   removeMarketLot: (userId: number, lotId: string) =>
     apiPost('/api/market/remove', { user_id: userId, lot_id: lotId }),
 
-  // ═══════════════ VIP ═══════════════
+  // VIP
   getVipTiers: () => apiGet('/api/vip'),
   buyVip: (userId: number, tierId: number) =>
     apiPost('/api/vip/buy', { user_id: userId, tier_id: tierId }),
 
-  // ═══════════════ XP ═══════════════
+  // XP
   getXpPacks: () => apiGet('/api/xp'),
   buyXpPack: (userId: number, packId: string) =>
     apiPost('/api/xp/buy', { user_id: userId, pack_id: packId }),
 
-  // ═══════════════ ЗАДАНИЯ ═══════════════
+  // Задания
   getQuests: (userId: number) => apiGet(`/api/quests/${userId}`),
   claimQuest: (userId: number, questKey: string) =>
     apiPost('/api/quests/claim', { user_id: userId, quest_key: questKey }),
 
-  // ═══════════════ ТУРНИР ═══════════════
+  // Турнир
   getTournament: () => apiGet('/api/tournament'),
+
+  // CRASH
+  crashState: () => apiGet('/api/crash/state'),
+  crashBet: (userId: number, username: string, bet: number, autoCashout?: number) =>
+    apiPost('/api/crash/bet', { user_id: userId, username, bet, auto_cashout: autoCashout }),
+  crashCashout: (userId: number) =>
+    apiPost('/api/crash/cashout', { user_id: userId }),
+  crashHistory: () => apiGet('/api/crash/history'),
+
+  // PLINKO
+  plinkoPlay: (userId: number, bet: number, risk: string) =>
+    apiPost('/api/plinko/play', { user_id: userId, bet, risk }),
+  plinkoHistory: () => apiGet('/api/plinko/history'),
 
   // ═══════════════ ИГРЫ ═══════════════
   gameRoulette: (userId: number, bet: number, choice: string) =>

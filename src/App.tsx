@@ -3,7 +3,6 @@ import { useTelegram } from './hooks/useTelegram'
 import { Layout } from './components/Layout'
 import { Home } from './pages/Home'
 import { Shop } from './pages/Shop'
-import { Cases } from './pages/Cases'
 import { Inventory } from './pages/Inventory'
 import { Top } from './pages/Top'
 import { Games } from './pages/Games'
@@ -13,6 +12,8 @@ import { Vip } from './pages/Vip'
 import { XP } from './pages/XP'
 import { Quests } from './pages/Quests'
 import { Tournament } from './pages/Tournament'
+import { Crash } from './pages/games/Crash'
+import { Plinko } from './pages/games/Plinko'
 
 function App() {
   const { ready, expand } = useTelegram()
@@ -40,7 +41,6 @@ function App() {
       case 'games':      return <Games onNavigate={handleNavigate} />
       case 'game_play':  return <GamePlay gameId={currentGame || 'roulette'} onBack={() => handleNavigate('games')} />
       case 'shop':       return <Shop />
-      case 'cases':      return <Cases />
       case 'inventory':  return <Inventory />
       case 'top':        return <Top />
       case 'market':     return <Market />
@@ -48,6 +48,8 @@ function App() {
       case 'xp':         return <XP />
       case 'quests':     return <Quests />
       case 'tournament': return <Tournament />
+      case 'crash':      return <Crash />
+      case 'plinko':     return <Plinko />
       default:           return <Home onNavigate={handleNavigate} />
     }
   }
