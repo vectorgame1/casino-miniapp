@@ -9,18 +9,18 @@ export function CrashRocket({ rotation = 0, spinning = false }: CrashRocketProps
   return (
     <motion.div
       animate={spinning ? { rotate: [0, 360] } : {}}
-      transition={spinning ? { duration: 2, repeat: Infinity, ease: 'linear' } : {}}
+      transition={spinning ? { duration: 1.2, repeat: Infinity, ease: 'linear' } : {}}
       style={{
-        filter: 'drop-shadow(0 0 30px rgba(255, 215, 0, 0.9)) drop-shadow(0 0 60px rgba(255, 165, 0, 0.5))',
+        filter: 'drop-shadow(0 0 20px rgba(255, 215, 0, 0.9)) drop-shadow(0 0 40px rgba(255, 165, 0, 0.5))',
       }}
     >
       <svg
         viewBox="0 0 160 100"
-        width="140"
-        height="90"
+        width="120"
+        height="80"
         style={{
           transform: `rotate(${rotation}deg)`,
-          transition: 'transform 0.2s linear',
+          transition: 'transform 0.15s linear',
         }}
       >
         <defs>
@@ -54,14 +54,14 @@ export function CrashRocket({ rotation = 0, spinning = false }: CrashRocketProps
         </defs>
 
         <g>
-          <ellipse cx="0" cy="50" rx="45" ry="14" fill="url(#fire2)" opacity="0.7">
-            <animate attributeName="rx" values="45;55;45" dur="0.3s" repeatCount="indefinite" />
+          <ellipse cx="5" cy="50" rx="40" ry="12" fill="url(#fire2)" opacity="0.7">
+            <animate attributeName="rx" values="40;50;40" dur="0.3s" repeatCount="indefinite" />
           </ellipse>
-          <ellipse cx="15" cy="50" rx="30" ry="10" fill="url(#fire1)" opacity="0.9">
-            <animate attributeName="rx" values="30;40;30" dur="0.2s" repeatCount="indefinite" />
+          <ellipse cx="15" cy="50" rx="25" ry="8" fill="url(#fire1)" opacity="0.9">
+            <animate attributeName="rx" values="25;35;25" dur="0.2s" repeatCount="indefinite" />
           </ellipse>
-          <ellipse cx="25" cy="50" rx="15" ry="6" fill="#FFFFFF" opacity="0.95">
-            <animate attributeName="rx" values="15;20;15" dur="0.15s" repeatCount="indefinite" />
+          <ellipse cx="22" cy="50" rx="12" ry="5" fill="#FFFFFF" opacity="0.95">
+            <animate attributeName="rx" values="12;16;12" dur="0.15s" repeatCount="indefinite" />
           </ellipse>
         </g>
 
@@ -91,36 +91,6 @@ export function CrashRocket({ rotation = 0, spinning = false }: CrashRocketProps
 
         <circle cx="70" cy="44" r="3" fill="url(#windowGrad)" stroke="#FFD700" strokeWidth="1" />
         <circle cx="70" cy="56" r="3" fill="url(#windowGrad)" stroke="#FFD700" strokeWidth="1" />
-
-        <line x1="38" y1="50" x2="130" y2="50" stroke="#FF4500" strokeWidth="1" opacity="0.4" />
-
-        <path
-          d="M 45 44 Q 85 40 125 46"
-          stroke="#FFFFFF"
-          strokeWidth="2"
-          fill="none"
-          opacity="0.7"
-        />
-        <path
-          d="M 45 43 Q 85 39 125 45"
-          stroke="#FFFFFF"
-          strokeWidth="1"
-          fill="none"
-          opacity="0.4"
-        />
-
-        <circle cx="50" cy="44" r="1.5" fill="#4A3410" />
-        <circle cx="50" cy="56" r="1.5" fill="#4A3410" />
-        <circle cx="110" cy="43" r="1.5" fill="#4A3410" />
-        <circle cx="110" cy="57" r="1.5" fill="#4A3410" />
-
-        <circle cx="10" cy="46" r="2" fill="#FFD700" opacity="0.9">
-          <animate attributeName="cx" values="10;0;10" dur="0.5s" repeatCount="indefinite" />
-          <animate attributeName="opacity" values="0.9;0;0.9" dur="0.5s" repeatCount="indefinite" />
-        </circle>
-        <circle cx="8" cy="54" r="1.5" fill="#FFA500" opacity="0.8">
-          <animate attributeName="cx" values="8;0;8" dur="0.7s" repeatCount="indefinite" />
-        </circle>
       </svg>
     </motion.div>
   )
