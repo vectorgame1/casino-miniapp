@@ -47,7 +47,7 @@ export function CrashBg({ multiplier = 1, status = 'waiting' }: CrashBgProps) {
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      <div className="absolute inset-0 bg-gradient-to-b from-[#0A0A1A] via-[#0F0F1A] to-[#1A0F2E]" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#0A0A0F] via-[#0F0F16] to-[#1A0F1E]" />
 
       {stars.slice(0, 30).map((star) => (
         <div
@@ -74,8 +74,8 @@ export function CrashBg({ multiplier = 1, status = 'waiting' }: CrashBgProps) {
             top: `${star.y}%`,
             width: `${star.size + 1}px`,
             height: `${star.size + 1}px`,
-            background: '#FFD700',
-            boxShadow: '0 0 6px rgba(255, 215, 0, 0.9)',
+            background: '#D4AF37',
+            boxShadow: '0 0 6px rgba(212, 175, 55, 0.9)',
             animation: `twinkle ${1.5 + star.delay}s ease-in-out infinite`,
             animationDelay: `${star.delay}s`,
           }}
@@ -89,15 +89,15 @@ export function CrashBg({ multiplier = 1, status = 'waiting' }: CrashBgProps) {
       >
         <defs>
           <linearGradient id="crashFill" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#FF8C00" stopOpacity="0.5" />
-            <stop offset="50%" stopColor="#FF6600" stopOpacity="0.25" />
-            <stop offset="100%" stopColor="#FF4500" stopOpacity="0.03" />
+            <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.45" />
+            <stop offset="50%" stopColor="#B8941F" stopOpacity="0.2" />
+            <stop offset="100%" stopColor="#8B0000" stopOpacity="0.03" />
           </linearGradient>
 
           <linearGradient id="crashLine" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#FFD700" />
-            <stop offset="60%" stopColor="#FFA500" />
-            <stop offset="100%" stopColor="#FF4500" />
+            <stop offset="0%" stopColor="#E8C860" />
+            <stop offset="60%" stopColor="#D4AF37" />
+            <stop offset="100%" stopColor="#B8941F" />
           </linearGradient>
 
           <filter id="crashGlow" x="-50%" y="-50%" width="200%" height="200%">
@@ -109,6 +109,7 @@ export function CrashBg({ multiplier = 1, status = 'waiting' }: CrashBgProps) {
           </filter>
         </defs>
 
+        {/* Сетка */}
         {[0.2, 0.4, 0.6, 0.8].map((p) => (
           <line
             key={p}
@@ -116,12 +117,13 @@ export function CrashBg({ multiplier = 1, status = 'waiting' }: CrashBgProps) {
             y1={H * p}
             x2={W}
             y2={H * p}
-            stroke="rgba(255, 255, 255, 0.05)"
+            stroke="rgba(212, 175, 55, 0.06)"
             strokeWidth="1"
             strokeDasharray="6 10"
           />
         ))}
 
+        {/* Метки уровней */}
         {[1.5, 2, 3, 5, 10].map((m) => {
           const y = H - 60 - (Math.log(m) / Math.log(10)) * (H - 160)
           return (
@@ -129,25 +131,28 @@ export function CrashBg({ multiplier = 1, status = 'waiting' }: CrashBgProps) {
               key={m}
               x="16"
               y={y}
-              fill="rgba(255, 215, 0, 0.35)"
+              fill="rgba(212, 175, 55, 0.35)"
               fontSize="14"
               fontWeight="bold"
-              fontFamily="monospace"
+              fontFamily="Bebas Neue, sans-serif"
+              letterSpacing="1"
             >
               ×{m}
             </text>
           )
         })}
 
+        {/* Заливка */}
         {(status === 'running' || status === 'crashed') && (
           <path d={fillD} fill="url(#crashFill)" />
         )}
 
+        {/* Кривая */}
         {(status === 'running' || status === 'crashed') && (
           <>
             <path
               d={pathD}
-              stroke="#FF8C00"
+              stroke="#D4AF37"
               strokeWidth="10"
               fill="none"
               opacity="0.25"
@@ -156,15 +161,16 @@ export function CrashBg({ multiplier = 1, status = 'waiting' }: CrashBgProps) {
             <path
               d={pathD}
               stroke="url(#crashLine)"
-              strokeWidth="3"
+              strokeWidth="4"
               fill="none"
               strokeLinecap="round"
             />
           </>
         )}
 
+        {/* Пульсация у ракеты */}
         {status === 'running' && (
-          <circle cx={rocketX} cy={rocketY} r="30" fill="#FFD700" opacity="0.15">
+          <circle cx={rocketX} cy={rocketY} r="30" fill="#D4AF37" opacity="0.15">
             <animate attributeName="r" values="20;40;20" dur="0.8s" repeatCount="indefinite" />
             <animate attributeName="opacity" values="0.2;0;0.2" dur="0.8s" repeatCount="indefinite" />
           </circle>

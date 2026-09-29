@@ -42,7 +42,6 @@ export function Roulette({ onBack }: RouletteProps) {
     setWin(null)
     setAmount(0)
 
-    // Запрос к API
     const res = await api.gameRoulette(userId, bet, betType) as any
     if (!res || res.error) {
       hapticError()
@@ -51,19 +50,21 @@ export function Roulette({ onBack }: RouletteProps) {
       return
     }
 
-    // Определяем угол для выигрышного числа
     const segAngle = 360 / 37
     const idx = WHEEL_ORDER.indexOf(res.result)
-    const targetAngle = 360 * 5 + (360 - idx * segAngle) - segAngle / 2
+    const targetMod = (360 - (idx * segAngle + segAngle / 2)) % 360
+    const baseRotation = rotationRef.current % 360
 
-    const newRotation = rotationRef.current + targetAngle
+    let delta = targetMod - baseRotation
+    if (delta < 0) delta += 360
+
+    const fullSpins = 360 * 5
+    const newRotation = rotationRef.current + fullSpins + delta
     setRotation(newRotation)
     rotationRef.current = newRotation
 
-    // Ждём анимацию (5 сек)
     await new Promise((r) => setTimeout(r, 5000))
 
-    // Показываем результат
     setResult(res.result)
     setResultColor(res.color)
     setWin(res.win)
@@ -84,10 +85,9 @@ export function Roulette({ onBack }: RouletteProps) {
 
   const fmtNumber = (n: number) => n.toLocaleString('ru-RU').replace(/,/g, ' ')
 
-  // SVG-колесо
   const size = 280
   const center = size / 2
-  const radius = center - 10
+  const radius = center - 12
   const segAngle = 360 / 37
 
   const polarToCartesian = (cx: number, cy: number, r: number, angleDeg: number) => {
@@ -96,29 +96,31 @@ export function Roulette({ onBack }: RouletteProps) {
   }
 
   return (
-    <div className="p-4">
-      <button onClick={onBack} className="text-casino-muted mb-4 text-sm">
-        ← Назад к играм
+    <div className="p-4 pb-24">
+      <button onClick={onBack} className="text-casino-muted mb-4 text-xs tracking-widest uppercase">
+        ← Назад
       </button>
 
       <Card>
         <div className="text-center py-3">
-          <div className="text-3xl font-bold text-casino-gold">🎡 РУЛЕТКА</div>
+          <div className="font-display text-3xl tracking-widest text-casino-gold">РУЛЕТКА</div>
         </div>
       </Card>
 
-      {/* SVG-колесо */}
       <div className="flex justify-center my-6 relative">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10 text-3xl text-casino-gold">
-          ▼
+        <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-20">
+          <svg width="20" height="26" viewBox="0 0 20 26" fill="none">
+            <path d="M10 26 L2 8 L18 8 Z" fill="#D4AF37" stroke="#8B6914" strokeWidth="1.5" strokeLinejoin="round"/>
+            <circle cx="10" cy="6" r="4" fill="#D4AF37" stroke="#8B6914" strokeWidth="1"/>
+          </svg>
         </div>
 
         <div
           className="rounded-full"
           style={{
             transform: `rotate(${rotation}deg)`,
-            transition: playing ? 'transform 5s cubic-bezier(0.17, 0.67, 0.4, 0.99)' : 'none',
-            filter: 'drop-shadow(0 0 20px rgba(255, 215, 0, 0.4))',
+            transition: playing ? 'transform 5s cubic-bezier(0.15, 0.8, 0.4, 0.99)' : 'none',
+            filter: 'drop-shadow(0 0 25px rgba(212, 175, 55, 0.5))',
           }}
         >
           <svg width={size} height={size}>
@@ -127,9 +129,9 @@ export function Roulette({ onBack }: RouletteProps) {
               const endAngle = startAngle + segAngle
               const color = getColor(num)
               const fill =
-                color === 'red' ? '#DC143C' :
-                color === 'black' ? '#1A1A1A' :
-                '#00A650'
+                color === 'red' ? '#8B0000' :
+                color === 'black' ? '#0F0F16' :
+                '#2D6A4F'
 
               const p1 = polarToCartesian(center, center, radius, startAngle)
               const p2 = polarToCartesian(center, center, radius, endAngle)
@@ -144,13 +146,14 @@ export function Roulette({ onBack }: RouletteProps) {
 
               return (
                 <g key={i}>
-                  <path d={path} fill={fill} stroke="#FFD700" strokeWidth="0.5" />
+                  <path d={path} fill={fill} stroke="#D4AF37" strokeWidth="0.4" opacity="0.85" />
                   <text
                     x={textPos.x}
                     y={textPos.y}
-                    fill="white"
+                    fill="#E5E5E5"
                     fontSize="10"
                     fontWeight="bold"
+                    fontFamily="Inter, sans-serif"
                     textAnchor="middle"
                     dominantBaseline="middle"
                     transform={`rotate(${startAngle + segAngle / 2}, ${textPos.x}, ${textPos.y})`}
@@ -160,53 +163,52 @@ export function Roulette({ onBack }: RouletteProps) {
                 </g>
               )
             })}
-            <circle cx={center} cy={center} r={radius} fill="none" stroke="#FFD700" strokeWidth="3" />
-            <circle cx={center} cy={center} r={20} fill="#FFD700" stroke="#B8860B" strokeWidth="2" />
-            <circle cx={center} cy={center} r={12} fill="#B8860B" />
+
+            <circle cx={center} cy={center} r={radius} fill="none" stroke="#D4AF37" strokeWidth="2.5" />
+            <circle cx={center} cy={center} r={22} fill="#14141C" stroke="#D4AF37" strokeWidth="1.5" />
+            <circle cx={center} cy={center} r={14} fill="#0A0A0F" />
+            <circle cx={center} cy={center} r={6} fill="#D4AF37" />
           </svg>
         </div>
       </div>
 
-      {/* Результат */}
       <AnimatePresence>
         {result !== null && (
           <motion.div
             initial={{ opacity: 0, scale: 0.5 }}
             animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
             className="text-center mb-4"
           >
             <div
-              className={`inline-block px-6 py-3 rounded-2xl font-bold text-2xl ${
-                resultColor === 'red' ? 'bg-red-600' :
-                resultColor === 'black' ? 'bg-gray-900 border-2 border-white' :
-                'bg-green-600'
+              className={`inline-flex items-center justify-center w-16 h-16 rounded-xl font-display text-3xl ${
+                resultColor === 'red' ? 'bg-[#8B0000] text-casino-text border-2 border-casino-redLight' :
+                resultColor === 'black' ? 'bg-[#0F0F16] text-casino-text border-2 border-casino-border' :
+                'bg-[#2D6A4F] text-casino-text border-2 border-casino-greenLight'
               }`}
             >
               {result}
             </div>
-            <div className={`mt-3 text-xl font-bold ${win ? 'text-casino-green' : 'text-casino-red'}`}>
-              {win
-                ? `🎉 +${fmtNumber(amount - bet)} 💎`
-                : `😢 -${fmtNumber(bet)} 💎`}
+            <div className={`mt-3 font-display text-2xl tracking-wider ${win ? 'text-casino-greenLight' : 'text-casino-redLight'}`}>
+              {win ? `+${fmtNumber(amount - bet)} TOKENS` : `-${fmtNumber(bet)} TOKENS`}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Ставки */}
       {!playing && result === null && (
         <>
           <Card className="mb-3">
-            <div className="text-casino-muted text-sm mb-2">💰 Ставка:</div>
+            <div className="text-casino-muted text-[10px] mb-2 tracking-widest uppercase">Ставка</div>
             <div className="flex gap-2 overflow-x-auto pb-1">
               {BET_OPTIONS.map((b) => (
                 <button
                   key={b}
                   onClick={() => { haptic('light'); setBet(b) }}
-                  className={`flex-shrink-0 px-4 py-2 rounded-xl font-bold text-sm ${
+                  className={`flex-shrink-0 px-4 py-2 rounded-lg font-display text-sm tracking-wider ${
                     bet === b
-                      ? 'bg-casino-gold text-black'
-                      : 'bg-casino-bg border border-casino-border text-casino-muted'
+                      ? 'bg-gradient-to-r from-casino-gold to-casino-gold2 text-casino-bg'
+                      : 'bg-casino-bg border border-casino-border/60 text-casino-muted'
                   }`}
                 >
                   {fmtNumber(b)}
@@ -216,40 +218,49 @@ export function Roulette({ onBack }: RouletteProps) {
           </Card>
 
           <Card className="mb-3">
-            <div className="text-casino-muted text-sm mb-2">🎯 Куда ставим:</div>
+            <div className="text-casino-muted text-[10px] mb-2 tracking-widest uppercase">Куда ставим</div>
             <div className="grid grid-cols-3 gap-2">
               <button
                 onClick={() => { haptic('light'); setBetType('red') }}
-                className={`py-3 rounded-xl font-bold text-sm ${
-                  betType === 'red' ? 'bg-red-600 text-white' : 'bg-casino-bg border border-red-600 text-red-500'
+                className={`py-3 rounded-lg font-display text-sm tracking-wider flex items-center justify-center gap-2 ${
+                  betType === 'red'
+                    ? 'bg-[#8B0000] text-casino-text border-2 border-casino-redLight'
+                    : 'bg-casino-bg border border-casino-red/40 text-casino-redLight'
                 }`}
               >
-                🔴 ×2
+                <svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="#C41E3A"/></svg>
+                ×2
               </button>
               <button
                 onClick={() => { haptic('light'); setBetType('black') }}
-                className={`py-3 rounded-xl font-bold text-sm ${
-                  betType === 'black' ? 'bg-gray-900 text-white border-2 border-white' : 'bg-casino-bg border border-gray-600 text-gray-300'
+                className={`py-3 rounded-lg font-display text-sm tracking-wider flex items-center justify-center gap-2 ${
+                  betType === 'black'
+                    ? 'bg-[#0F0F16] text-casino-text border-2 border-casino-text'
+                    : 'bg-casino-bg border border-casino-border text-casino-muted'
                 }`}
               >
-                ⚫ ×2
+                <svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="#1A1A1A" stroke="#666"/></svg>
+                ×2
               </button>
               <button
                 onClick={() => { haptic('light'); setBetType('green') }}
-                className={`py-3 rounded-xl font-bold text-sm ${
-                  betType === 'green' ? 'bg-green-600 text-white' : 'bg-casino-bg border border-green-600 text-green-500'
+                className={`py-3 rounded-lg font-display text-sm tracking-wider flex items-center justify-center gap-2 ${
+                  betType === 'green'
+                    ? 'bg-[#2D6A4F] text-casino-text border-2 border-casino-greenLight'
+                    : 'bg-casino-bg border border-casino-green/40 text-casino-greenLight'
                 }`}
               >
-                🟢 ×36
+                <svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="#52B788"/></svg>
+                ×36
               </button>
             </div>
           </Card>
 
           <button
             onClick={handleSpin}
-            className="w-full bg-gradient-to-r from-casino-gold to-casino-gold2 text-black font-bold py-4 rounded-xl text-lg active:scale-95 transition-transform"
+            className="w-full bg-gradient-to-r from-casino-gold to-casino-gold2 text-casino-bg font-display py-4 rounded-xl text-xl tracking-widest active:scale-95 transition-transform shadow-gold"
           >
-            🎡 КРУТИТЬ
+            КРУТИТЬ
           </button>
         </>
       )}
@@ -257,9 +268,9 @@ export function Roulette({ onBack }: RouletteProps) {
       {!playing && result !== null && (
         <button
           onClick={resetGame}
-          className="w-full bg-gradient-to-r from-casino-gold to-casino-gold2 text-black font-bold py-4 rounded-xl text-lg active:scale-95 transition-transform"
+          className="w-full bg-gradient-to-r from-casino-gold to-casino-gold2 text-casino-bg font-display py-4 rounded-xl text-xl tracking-widest active:scale-95 transition-transform shadow-gold"
         >
-          🔄 ЕЩЁ РАЗ
+          ЕЩЁ РАЗ
         </button>
       )}
     </div>

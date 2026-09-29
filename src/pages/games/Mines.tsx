@@ -1,14 +1,14 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Card } from '../../components/Card'
 import { useTelegram } from '../../hooks/useTelegram'
 import { api } from '../../api/client'
 
 const BET_OPTIONS = [100, 500, 1000, 5000, 10000]
 const LEVELS = [
-  { id: 'easy', name: '🟢 Лёгкий', mines: 3 },
-  { id: 'medium', name: '🟡 Средний', mines: 5 },
-  { id: 'hard', name: '🔴 Хардкор', mines: 10 },
+  { id: 'easy', name: 'ЛЁГКИЙ', mines: 3, color: 'green' },
+  { id: 'medium', name: 'СРЕДНИЙ', mines: 5, color: 'gold' },
+  { id: 'hard', name: 'ХАРДКОР', mines: 10, color: 'red' },
 ]
 
 interface MinesProps {
@@ -28,7 +28,6 @@ export function Mines({ onBack }: MinesProps) {
 
   const startGame = async () => {
     haptic('medium')
-
     const res = await api.minesStart(userId, bet, level) as any
     if (!res || res.error) {
       hapticError()
@@ -64,7 +63,6 @@ export function Mines({ onBack }: MinesProps) {
     setField(newField)
 
     if (res.mine) {
-      // Проигрыш — открываем все мины
       if (res.mines) {
         res.mines.forEach((mIdx: number) => {
           if (newField[mIdx]) newField[mIdx].opened = true
@@ -89,14 +87,12 @@ export function Mines({ onBack }: MinesProps) {
   const cashout = async () => {
     if (!playing) return
     haptic('medium')
-
     const res = await api.minesCashout(userId) as any
     if (!res || res.error) {
       hapticError()
       alert(res?.error || 'Ошибка')
       return
     }
-
     hapticSuccess()
     setPlaying(false)
     setResult({ win: true, amount: res.amount })
@@ -111,18 +107,17 @@ export function Mines({ onBack }: MinesProps) {
   const fmtNumber = (n: number) => n.toLocaleString('ru-RU').replace(/,/g, ' ')
 
   return (
-    <div className="p-4">
-      <button onClick={onBack} className="text-casino-muted mb-4 text-sm">
-        ← Назад к играм
+    <div className="p-4 pb-24">
+      <button onClick={onBack} className="text-casino-muted mb-4 text-xs tracking-widest uppercase">
+        ← Назад
       </button>
 
       <Card>
         <div className="text-center py-3">
-          <div className="text-3xl font-bold text-casino-gold">💣 МИНЫ</div>
+          <div className="font-display text-3xl tracking-widest text-casino-gold">МИНЫ</div>
         </div>
       </Card>
 
-      {/* Поле */}
       {playing && field.length > 0 && (
         <Card className="mt-4">
           <div className="grid grid-cols-5 gap-1.5 p-1">
@@ -132,27 +127,52 @@ export function Mines({ onBack }: MinesProps) {
                 whileTap={{ scale: 0.9 }}
                 onClick={() => openCell(i)}
                 disabled={cell.opened}
-                className={`aspect-square rounded-lg flex items-center justify-center text-2xl font-bold transition-colors ${
+                className={`aspect-square rounded-lg flex items-center justify-center transition-colors border-2 ${
                   !cell.opened
-                    ? 'bg-casino-bg border-2 border-casino-border hover:border-casino-gold'
+                    ? 'bg-casino-bg border-casino-border/60 hover:border-casino-gold'
                     : cell.mine
-                    ? 'bg-red-600'
-                    : 'bg-green-700'
+                    ? 'bg-[#8B0000] border-casino-redLight'
+                    : 'bg-[#2D6A4F] border-casino-greenLight'
                 }`}
               >
-                {cell.opened ? (cell.mine ? (cell.exploded ? '💥' : '💣') : '💎') : ''}
+                {cell.opened && (
+                  <motion.div
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    {cell.mine ? (
+                      cell.exploded ? (
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="#E5E5E5">
+                          <path d="M12 2 L14 9 L21 7 L16 12 L21 17 L14 15 L12 22 L10 15 L3 17 L8 12 L3 7 L10 9 Z" />
+                        </svg>
+                      ) : (
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="#E5E5E5">
+                          <circle cx="12" cy="14" r="7" fill="#E5E5E5" />
+                          <path d="M12 4 L12 7 M8 6 L9 8 M16 6 L15 8" stroke="#E5E5E5" strokeWidth="2" strokeLinecap="round" />
+                          <circle cx="10" cy="12" r="1.5" fill="#8B0000" />
+                        </svg>
+                      )
+                    ) : (
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="#52B788">
+                        <path d="M6 3 H18 L22 9 L12 21 L2 9 Z" />
+                        <path d="M2 9 H22 M12 21 L9 9 L12 3 L15 9 L12 21" stroke="#0A0A0F" strokeWidth="0.5" fill="none" />
+                      </svg>
+                    )}
+                  </motion.div>
+                )}
               </motion.button>
             ))}
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-3 text-center">
-            <div className="bg-casino-bg rounded-xl py-3">
-              <div className="text-casino-muted text-xs">Множитель</div>
-              <div className="text-casino-gold font-bold text-xl">×{mult.toFixed(2)}</div>
+            <div className="bg-casino-bg rounded-xl py-3 border border-casino-border/40">
+              <div className="text-casino-muted text-[9px] tracking-widest uppercase">Множитель</div>
+              <div className="text-casino-gold font-display text-xl tracking-wider">×{mult.toFixed(2)}</div>
             </div>
-            <div className="bg-casino-bg rounded-xl py-3">
-              <div className="text-casino-muted text-xs">Забрать</div>
-              <div className="text-casino-green font-bold text-xl">
+            <div className="bg-casino-bg rounded-xl py-3 border border-casino-border/40">
+              <div className="text-casino-muted text-[9px] tracking-widest uppercase">Забрать</div>
+              <div className="text-casino-greenLight font-display text-xl tracking-wider">
                 {fmtNumber(Math.floor(bet * mult))}
               </div>
             </div>
@@ -160,44 +180,44 @@ export function Mines({ onBack }: MinesProps) {
 
           <button
             onClick={cashout}
-            className="w-full mt-3 bg-gradient-to-r from-casino-green to-green-700 text-white font-bold py-3 rounded-xl active:scale-95 transition-transform"
+            className="w-full mt-3 bg-gradient-to-r from-casino-green to-casino-greenLight text-casino-bg font-display py-3 rounded-xl text-lg tracking-widest active:scale-95"
           >
-            💰 ЗАБРАТЬ
+            ЗАБРАТЬ
           </button>
         </Card>
       )}
 
-      {/* Результат */}
-      {result && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-4 text-center"
-        >
-          {result.win ? (
-            <div className="text-2xl font-bold text-casino-green">
-              🎉 +{fmtNumber(result.amount - bet)} 💎
-            </div>
-          ) : (
-            <div className="text-2xl font-bold text-casino-red">
-              💥 МИНА! -{fmtNumber(result.amount)} 💎
-            </div>
-          )}
-        </motion.div>
-      )}
+      <AnimatePresence>
+        {result && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4 text-center"
+          >
+            {result.win ? (
+              <div className="font-display text-2xl tracking-wider text-casino-greenLight">
+                +{fmtNumber(result.amount - bet)} TOKENS
+              </div>
+            ) : (
+              <div className="font-display text-2xl tracking-wider text-casino-redLight">
+                МИНА! -{fmtNumber(result.amount)} TOKENS
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Настройки */}
       {!playing && !result && (
         <>
           <Card className="mt-4">
-            <div className="text-casino-muted text-sm mb-2">💰 Ставка:</div>
+            <div className="text-casino-muted text-[10px] mb-2 tracking-widest uppercase">Ставка</div>
             <div className="flex gap-2 overflow-x-auto pb-1">
               {BET_OPTIONS.map((b) => (
                 <button
                   key={b}
                   onClick={() => { haptic('light'); setBet(b) }}
-                  className={`flex-shrink-0 px-4 py-2 rounded-xl font-bold text-sm ${
-                    bet === b ? 'bg-casino-gold text-black' : 'bg-casino-bg border border-casino-border text-casino-muted'
+                  className={`flex-shrink-0 px-4 py-2 rounded-lg font-display text-sm tracking-wider ${
+                    bet === b ? 'bg-gradient-to-r from-casino-gold to-casino-gold2 text-casino-bg' : 'bg-casino-bg border border-casino-border/60 text-casino-muted'
                   }`}
                 >
                   {fmtNumber(b)}
@@ -207,18 +227,18 @@ export function Mines({ onBack }: MinesProps) {
           </Card>
 
           <Card className="mt-3">
-            <div className="text-casino-muted text-sm mb-2">🎯 Уровень:</div>
+            <div className="text-casino-muted text-[10px] mb-2 tracking-widest uppercase">Уровень</div>
             <div className="grid grid-cols-3 gap-2">
               {LEVELS.map((l) => (
                 <button
                   key={l.id}
                   onClick={() => { haptic('light'); setLevel(l.id) }}
-                  className={`py-3 rounded-xl font-bold text-xs ${
-                    level === l.id ? 'bg-casino-gold text-black' : 'bg-casino-bg border border-casino-border text-casino-muted'
+                  className={`py-3 rounded-lg font-display text-[10px] tracking-wider ${
+                    level === l.id ? 'bg-gradient-to-r from-casino-gold to-casino-gold2 text-casino-bg' : 'bg-casino-bg border border-casino-border/60 text-casino-muted'
                   }`}
                 >
                   {l.name}
-                  <div className="text-[10px] mt-0.5">{l.mines} 💣</div>
+                  <div className="text-[9px] mt-0.5">{l.mines} МИН</div>
                 </button>
               ))}
             </div>
@@ -226,9 +246,9 @@ export function Mines({ onBack }: MinesProps) {
 
           <button
             onClick={startGame}
-            className="w-full mt-4 bg-gradient-to-r from-casino-gold to-casino-gold2 text-black font-bold py-4 rounded-xl text-lg active:scale-95 transition-transform"
+            className="w-full mt-4 bg-gradient-to-r from-casino-gold to-casino-gold2 text-casino-bg font-display py-4 rounded-xl text-xl tracking-widest active:scale-95 shadow-gold"
           >
-            💣 НАЧАТЬ
+            НАЧАТЬ
           </button>
         </>
       )}
@@ -236,9 +256,9 @@ export function Mines({ onBack }: MinesProps) {
       {!playing && result && (
         <button
           onClick={reset}
-          className="w-full mt-4 bg-gradient-to-r from-casino-gold to-casino-gold2 text-black font-bold py-4 rounded-xl text-lg active:scale-95 transition-transform"
+          className="w-full mt-4 bg-gradient-to-r from-casino-gold to-casino-gold2 text-casino-bg font-display py-4 rounded-xl text-xl tracking-widest active:scale-95 shadow-gold"
         >
-          🔄 ЕЩЁ РАЗ
+          ЕЩЁ РАЗ
         </button>
       )}
     </div>

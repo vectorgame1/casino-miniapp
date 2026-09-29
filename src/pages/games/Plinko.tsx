@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Card } from '../../components/Card'
 import { useTelegram } from '../../hooks/useTelegram'
 import { api } from '../../api/client'
 
 const RISKS = [
-  { id: 'low', icon: '🟢', name: 'Низкий' },
-  { id: 'medium', icon: '🟡', name: 'Средний' },
-  { id: 'high', icon: '🔴', name: 'Высокий' },
+  { id: 'low', name: 'НИЗКИЙ', color: '#52B788', border: 'border-casino-greenLight/50' },
+  { id: 'medium', name: 'СРЕДНИЙ', color: '#D4AF37', border: 'border-casino-gold/50' },
+  { id: 'high', name: 'ВЫСОКИЙ', color: '#C41E3A', border: 'border-casino-redLight/50' },
 ]
 
 const MULTIPLIERS: Record<string, number[]> = {
@@ -58,7 +58,6 @@ export function Plinko() {
     const res = await api.plinkoPlay(userId, b, risk) as any
 
     if (res && res.position !== undefined) {
-      // Генерируем визуальный путь к РЕАЛЬНОЙ позиции
       const targetPos = res.position
       const visualPath: number[] = [4]
       let cur = 4
@@ -76,7 +75,6 @@ export function Plinko() {
         cur = Math.max(0, Math.min(8, cur))
         visualPath.push(cur)
       }
-      // Финалим точно на targetPos
       visualPath[visualPath.length - 1] = targetPos
 
       for (let i = 0; i < visualPath.length; i++) {
@@ -112,16 +110,14 @@ export function Plinko() {
   const ballRow = path.length - 1
 
   return (
-    <div className="p-4">
+    <div className="p-4 pb-24">
       <div className="text-center mb-4">
-        <h1 className="text-2xl font-bold text-casino-gold">🎯 PLINKO</h1>
-        <p className="text-casino-muted text-xs mt-1">Бросай шарик — лови множитель</p>
+        <h1 className="font-display text-3xl tracking-widest text-casino-gold">PLINKO</h1>
+        <p className="text-casino-muted text-[10px] tracking-widest uppercase mt-1">Бросай шарик — лови множитель</p>
       </div>
 
-      {/* ПОЛЕ */}
       <Card className="mb-4 relative overflow-hidden">
         <div className="relative w-full" style={{ height: '400px' }}>
-          {/* Колышки */}
           {Array.from({ length: 9 }).map((_, row) => (
             <div
               key={row}
@@ -129,52 +125,50 @@ export function Plinko() {
               style={{ top: `${(row + 1) * 9}%` }}
             >
               {Array.from({ length: row + 2 }).map((_, i) => (
-                <div                  key={i}
+                <div
+                  key={i}
                   className="w-1.5 h-1.5 rounded-full bg-casino-gold/50"
-                  style={{ boxShadow: '0 0 4px rgba(255,215,0,0.5)' }}
+                  style={{ boxShadow: '0 0 4px rgba(212,175,55,0.5)' }}
                 />
               ))}
             </div>
           ))}
 
-          {/* Шарик */}
           {path.length > 0 && finalPos === null && (
             <motion.div
-              className="absolute w-5 h-5 rounded-full flex items-center justify-center text-[10px]"
+              className="absolute w-5 h-5 rounded-full"
               style={{
-                background: 'linear-gradient(135deg, #FFD700, #FFA500)',
-                boxShadow: '0 0 15px rgba(255,215,0,0.9)',
+                background: 'radial-gradient(circle at 30% 30%, #E8C860, #D4AF37, #B8941F)',
+                boxShadow: '0 0 15px rgba(212,175,55,0.9)',
                 left: `${8 + ballPos * 10.5}%`,
                 top: `${(ballRow + 1) * 9}%`,
                 transform: 'translate(-50%, -50%)',
               }}
-              animate={{
-                left: `${8 + ballPos * 10.5}%`,
-                top: `${(ballRow + 1) * 9}%`,
-              }}
               transition={{ duration: 0.13 }}
-            >
-              💎
-            </motion.div>
+            />
           )}
 
-          {/* Результат */}
           {finalPos !== null && (
             <motion.div
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: [0, 1.4, 1], opacity: 1 }}
-              className="absolute text-4xl z-10"
+              className="absolute z-10"
               style={{
                 left: `${8 + finalPos * 10.5}%`,
                 top: '95%',
                 transform: 'translate(-50%, -50%)',
               }}
             >
-              {lastWin?.win ? '🎉' : '💥'}
+              <svg width="32" height="32" viewBox="0 0 24 24">
+                {lastWin?.win ? (
+                  <path d="M12 2 L15 8 L22 9 L17 14 L18 21 L12 17.5 L6 21 L7 14 L2 9 L9 8 Z" fill="#52B788" />
+                ) : (
+                  <path d="M12 2 L14 9 L21 7 L16 12 L21 17 L14 15 L12 22 L10 15 L3 17 L8 12 L3 7 L10 9 Z" fill="#C41E3A" />
+                )}
+              </svg>
             </motion.div>
           )}
 
-          {/* Лунки */}
           <div className="absolute bottom-0 left-0 right-0 flex justify-between px-1 gap-0.5">
             {multipliers.map((m, i) => {
               const isWinner = finalPos === i
@@ -184,20 +178,20 @@ export function Plinko() {
                 m >= 1 ? 'gold' : 'red'
               const baseClasses =
                 colorBase === 'purple' ? 'bg-purple-500/20 text-purple-300' :
-                colorBase === 'green' ? 'bg-casino-green/20 text-casino-green' :
+                colorBase === 'green' ? 'bg-casino-green/20 text-casino-greenLight' :
                 colorBase === 'gold' ? 'bg-casino-gold/20 text-casino-gold' :
-                'bg-casino-red/20 text-casino-red'
+                'bg-casino-red/20 text-casino-redLight'
               const winClasses =
                 colorBase === 'purple' ? 'bg-gradient-to-b from-purple-500 to-purple-700 text-white' :
-                colorBase === 'green' ? 'bg-gradient-to-b from-casino-green to-emerald-600 text-black' :
-                colorBase === 'gold' ? 'bg-gradient-to-b from-casino-gold to-casino-gold2 text-black' :
+                colorBase === 'green' ? 'bg-gradient-to-b from-casino-green to-emerald-600 text-casino-bg' :
+                colorBase === 'gold' ? 'bg-gradient-to-b from-casino-gold to-casino-gold2 text-casino-bg' :
                 'bg-gradient-to-b from-casino-red to-red-700 text-white'
               return (
                 <motion.div
                   key={i}
                   animate={isWinner ? { scale: [1, 1.3, 1] } : {}}
-                  className={`flex-1 py-3 rounded text-center text-[10px] font-black transition-all ${
-                    isWinner ? `${winClasses} shadow-[0_0_20px_rgba(255,255,255,0.6)]` : baseClasses
+                  className={`flex-1 py-3 rounded text-center text-[10px] font-display tracking-wider transition-all ${
+                    isWinner ? `${winClasses} shadow-[0_0_20px_rgba(212,175,55,0.6)]` : baseClasses
                   }`}
                 >
                   {m}×
@@ -208,25 +202,23 @@ export function Plinko() {
         </div>
       </Card>
 
-      {/* РИСК */}
       <div className="flex gap-2 mb-3">
         {RISKS.map((r) => (
           <button
             key={r.id}
             onClick={() => { haptic('light'); setRisk(r.id) }}
             disabled={playing}
-            className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${
+            className={`flex-1 py-3 rounded-lg font-display text-[10px] tracking-widest transition-all ${
               risk === r.id
-                ? 'bg-gradient-to-r from-casino-gold to-casino-gold2 text-black shadow-gold'
-                : 'bg-casino-card border border-casino-border text-casino-muted'
+                ? 'bg-gradient-to-r from-casino-gold to-casino-gold2 text-casino-bg shadow-gold'
+                : `bg-casino-card border ${r.border} text-casino-muted`
             } disabled:opacity-50`}
           >
-            {r.icon} {r.name}
+            {r.name}
           </button>
         ))}
       </div>
 
-      {/* СТАВКА */}
       <div className="flex gap-2 mb-3">
         <input
           type="number"
@@ -234,63 +226,60 @@ export function Plinko() {
           onChange={(e) => setBet(e.target.value)}
           disabled={playing}
           placeholder="Ставка"
-          className="flex-1 bg-casino-bg border border-casino-border rounded-xl px-4 py-3 text-casino-text text-center font-bold disabled:opacity-50"
+          className="flex-1 bg-casino-bg border border-casino-border/60 rounded-lg px-4 py-3 text-casino-text text-center font-display tracking-wider disabled:opacity-50"
         />
         {[100, 1000, 5000].map((v) => (
           <button
             key={v}
             onClick={() => setBet(v.toString())}
             disabled={playing}
-            className="bg-casino-bg border border-casino-border text-casino-muted px-3 rounded-xl text-xs font-bold disabled:opacity-50"
+            className="bg-casino-bg border border-casino-border/60 text-casino-muted px-3 rounded-lg text-xs font-display tracking-wider disabled:opacity-50"
           >
             {v >= 1000 ? `${v / 1000}K` : v}
           </button>
         ))}
       </div>
 
-      {/* КНОПКА БРОСИТЬ */}
       <button
         onClick={handlePlay}
         disabled={playing}
-        className="w-full bg-gradient-to-r from-casino-gold to-casino-gold2 text-black font-black py-4 rounded-2xl active:scale-95 shadow-gold disabled:opacity-50 mb-4"
+        className="w-full bg-gradient-to-r from-casino-gold to-casino-gold2 text-casino-bg font-display py-4 rounded-xl text-lg tracking-widest active:scale-95 shadow-gold disabled:opacity-50 mb-4"
       >
-        {playing ? '⏳ Бросаем...' : `🎯 БРОСИТЬ (${fmt(balance)})`}
+        {playing ? 'БРОСАЕМ...' : `БРОСИТЬ (${fmt(balance)})`}
       </button>
 
-      {/* РЕЗУЛЬТАТ */}
       {lastWin && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`text-center py-4 rounded-2xl mb-4 ${
+          className={`text-center py-4 rounded-xl mb-4 border ${
             lastWin.win
-              ? 'bg-casino-green/20 border border-casino-green/50'
-              : 'bg-casino-red/20 border border-casino-red/50'
+              ? 'bg-casino-green/10 border-casino-greenLight/40'
+              : 'bg-casino-red/10 border-casino-redLight/40'
           }`}
         >
-          <div className={`text-2xl font-black ${lastWin.win ? 'text-casino-green' : 'text-casino-red'}`}>
-            {lastWin.win ? `✅ ×${lastWin.multiplier}` : `💥 ×${lastWin.multiplier}`}
+          <div className={`font-display text-2xl tracking-wider ${lastWin.win ? 'text-casino-greenLight' : 'text-casino-redLight'}`}>
+            ×{lastWin.multiplier}
           </div>
-          <div className="text-sm mt-1">
+          <div className="text-sm mt-1 text-casino-muted font-display tracking-wider">
             {lastWin.win ? `+${fmt(lastWin.amount)}` : `-${fmt(lastWin.bet)}`}
           </div>
         </motion.div>
       )}
 
-      {/* ИСТОРИЯ */}
       {history.length > 0 && (
         <div>
-          <div className="text-casino-muted text-[10px] font-bold mb-2">
+          <div className="text-casino-muted text-[10px] font-display tracking-widest mb-2">
             ПОСЛЕДНИЕ ДРОПЫ
           </div>
           <div className="space-y-1 max-h-40 overflow-y-auto">
             {history.slice(0, 10).map((h, i) => (
-              <div key={i} className="flex items-center justify-between bg-casino-card px-3 py-1.5 rounded-lg text-xs">
-                <span className="truncate">👤 {h.username}</span>
-                <span className={`font-bold ${
-                  h.multiplier >= 2 ? 'text-casino-green' :
+              <div key={i} className="flex items-center justify-between bg-casino-card px-3 py-1.5 rounded-lg text-xs border border-casino-border/40">
+                <span className="truncate text-casino-muted">{h.username}</span>
+                <span className={`font-display tracking-wider ${
+                  h.multiplier >= 2 ? 'text-casino-greenLight' :
                   h.multiplier >= 1 ? 'text-casino-gold' :
-                  'text-casino-red'
+                  'text-casino-redLight'
                 }`}>
                   ×{h.multiplier}
                 </span>

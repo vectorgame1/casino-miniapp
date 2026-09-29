@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { Card } from '../components/Card'
-import { Avatar } from '../components/Avatar'
 import { useTelegram } from '../hooks/useTelegram'
 import { api } from '../api/client'
 
@@ -41,10 +40,10 @@ export function Market() {
     const res = await api.buyMarketLot(userId, lot.id) as any
     if (res?.success) {
       hapticSuccess()
-      alert(res.message || `✅ Куплено за ${fmtNumber(lot.price)} Tokens`)
+      alert(res.message || `Куплено за ${fmtNumber(lot.price)} Tokens`)
       await loadLots()
     } else {
-      alert(res?.error || '❌ Ошибка покупки')
+      alert(res?.error || 'Ошибка покупки')
     }
     setBuying(null)
   }
@@ -59,22 +58,12 @@ export function Market() {
       hapticSuccess()
       await loadLots()
     } else {
-      alert(res?.error || '❌ Ошибка снятия лота')
+      alert(res?.error || 'Ошибка снятия лота')
     }
     setRemoving(null)
   }
 
   const fmtNumber = (n: number) => n.toLocaleString('ru-RU').replace(/,/g, ' ')
-
-  const getLotIcon = (type: string): string => {
-    switch (type) {
-      case 'boost': return '⚡'
-      case 'title': return '🏷️'
-      case 'vip': return '👑'
-      case 'case': return '🎰'
-      default: return '🎁'
-    }
-  }
 
   const getLotTitle = (lot: MarketLot): string => {
     const p = lot.payload || {}
@@ -84,50 +73,52 @@ export function Market() {
     return 'Предмет'
   }
 
-  // Цвет карточки по типу
-  const getTypeColor = (type: string): string => {
-    switch (type) {
-      case 'boost': return 'from-yellow-500/20 to-orange-500/20 border-yellow-500/40'
-      case 'title': return 'from-purple-500/20 to-pink-500/20 border-purple-500/40'
-      case 'vip': return 'from-cyan-500/20 to-blue-500/20 border-cyan-500/40'
-      case 'case': return 'from-pink-500/20 to-red-500/20 border-pink-500/40'
-      default: return 'from-casino-gold/20 to-casino-gold2/20 border-casino-gold/40'
-    }
+  const getTypeLabel = (type: string): string => {
+    return type === 'boost' ? 'БУСТ' : type === 'title' ? 'ТИТУЛ' : type === 'vip' ? 'VIP' : 'ПРЕДМЕТ'
   }
 
-  // Время "N мин назад"
+  const LotIcon = ({ type }: { type: string }) => {
+    if (type === 'boost') return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="1.6">
+        <path d="M13 2 L4 14 H11 L10 22 L19 10 H12 Z" />
+      </svg>
+    )
+    if (type === 'title') return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="1.6">
+        <path d="M4 7 H20 L21 20 A1 1 0 0 1 20 21 H4 A1 1 0 0 1 3 20 Z" />
+        <path d="M9 7 V4 H15 V7" />
+      </svg>
+    )
+    if (type === 'vip') return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="#D4AF37">
+        <path d="M3 17 L5 7 L10 11 L12 5 L14 11 L19 7 L21 17 Z" />
+      </svg>
+    )
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="1.6">
+        <circle cx="12" cy="12" r="9" />
+      </svg>
+    )
+  }
+
   const timeAgo = (isoDate: string): string => {
     try {
       const diff = Math.floor((Date.now() - new Date(isoDate).getTime()) / 1000)
       if (diff < 60) return 'только что'
-      if (diff < 3600) return `${Math.floor(diff / 60)} мин назад`
-      if (diff < 86400) return `${Math.floor(diff / 3600)} ч назад`
-      return `${Math.floor(diff / 86400)} д назад`
-    } catch {
-      return ''
-    }
-  }
-
-  // Проверка "новое" (меньше 1 часа)
-  const isNew = (isoDate: string): boolean => {
-    try {
-      const diff = (Date.now() - new Date(isoDate).getTime()) / 1000
-      return diff < 3600
-    } catch {
-      return false
-    }
+      if (diff < 3600) return `${Math.floor(diff / 60)} мин`
+      if (diff < 86400) return `${Math.floor(diff / 3600)} ч`
+      return `${Math.floor(diff / 86400)} д`
+    } catch { return '' }
   }
 
   const filteredLots = tab === 'browse'
     ? lots.filter((l) => l.seller_id !== userId)
     : lots.filter((l) => l.seller_id === userId)
 
-  // Средняя цена (для бейджа "ДЁШЕВО")
   const avgPrice = filteredLots.length > 0
     ? filteredLots.reduce((sum, l) => sum + l.price, 0) / filteredLots.length
     : 0
 
-  // Топ-лот (самый дорогой)
   const topLotId = filteredLots.length > 0
     ? filteredLots.reduce((max, l) => l.price > max.price ? l : max, filteredLots[0]).id
     : null
@@ -136,71 +127,65 @@ export function Market() {
     return (
       <div className="flex items-center justify-center h-64 text-casino-muted">
         <div className="text-center">
-          <div className="text-4xl mb-2 animate-pulse">🏪</div>
-          Загрузка рынка...
+          <div className="w-8 h-8 border-2 border-casino-gold/30 border-t-casino-gold rounded-full animate-spin mx-auto mb-3" />
+          <div className="text-[10px] tracking-widest uppercase">Загрузка</div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="p-4">
-      {/* ЗАГОЛОВОК */}
+    <div className="p-4 pb-24">
       <div className="text-center mb-4">
-        <h1 className="text-2xl font-bold text-casino-gold">🏪 РЫНОК</h1>
+        <h1 className="font-display text-3xl tracking-widest text-casino-gold">РЫНОК</h1>
       </div>
 
-      {/* ТАБЫ */}
       <div className="flex gap-2 mb-4">
         <button
           onClick={() => { haptic('light'); setTab('browse') }}
-          className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${
+          className={`flex-1 py-3 rounded-lg font-display text-xs tracking-widest transition-all border ${
             tab === 'browse'
-              ? 'bg-gradient-to-r from-casino-gold to-casino-gold2 text-black shadow-gold'
-              : 'bg-casino-card border border-casino-border text-casino-muted'
+              ? 'bg-gradient-to-r from-casino-gold to-casino-gold2 text-casino-bg border-transparent shadow-gold'
+              : 'bg-casino-card border-casino-border/60 text-casino-muted'
           }`}
         >
-          🛒 КУПИТЬ
+          КУПИТЬ
         </button>
         <button
           onClick={() => { haptic('light'); setTab('mylots') }}
-          className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${
+          className={`flex-1 py-3 rounded-lg font-display text-xs tracking-widest transition-all border ${
             tab === 'mylots'
-              ? 'bg-gradient-to-r from-casino-gold to-casino-gold2 text-black shadow-gold'
-              : 'bg-casino-card border border-casino-border text-casino-muted'
+              ? 'bg-gradient-to-r from-casino-gold to-casino-gold2 text-casino-bg border-transparent shadow-gold'
+              : 'bg-casino-card border-casino-border/60 text-casino-muted'
           }`}
         >
-          📦 МОИ ЛОТЫ
+          МОИ ЛОТЫ
         </button>
       </div>
 
-      {/* ИНФО-БАННЕР */}
-      <Card className="mb-4 bg-gradient-to-r from-casino-gold/5 to-casino-gold2/5 border-casino-gold/30">
-        <div className="text-casino-muted text-xs text-center">
-          💡 Продавай бусты, титулы, VIP другим игрокам
+      <Card className="mb-4 bg-casino-bg/50">
+        <div className="text-casino-muted text-[10px] text-center tracking-wider">
+          ПРОДАВАЙ БУСТЫ, ТИТУЛЫ, VIP ДРУГИМ ИГРОКАМ
           <br />
-          💰 Комиссия 5% → в джекпот 🎰
+          КОМИССИЯ 5% → В ДЖЕКПОТ
         </div>
       </Card>
 
-      {/* СПИСОК ЛОТОВ */}
       {filteredLots.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-        >
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
           <Card>
             <div className="text-center py-12 text-casino-muted">
-              <div className="text-6xl mb-4">
-                {tab === 'browse' ? '🛒' : '📦'}
+              <div className="flex justify-center mb-4">
+                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#6B6B7B" strokeWidth="1.2">
+                  <path d="M4 7 H20 L21 20 A1 1 0 0 1 20 21 H4 A1 1 0 0 1 3 20 Z" />
+                  <path d="M8 7 V4 H16 V7" />
+                </svg>
               </div>
-              <div className="font-bold text-lg mb-2">
-                {tab === 'browse' ? 'Пока никто не продаёт' : 'У тебя нет лотов'}
+              <div className="font-display tracking-widest text-lg mb-2">
+                {tab === 'browse' ? 'ПОКА НИКТО НЕ ПРОДАЁТ' : 'У ТЕБЯ НЕТ ЛОТОВ'}
               </div>
-              <div className="text-xs">
-                {tab === 'browse'
-                  ? 'Стань первым продавцом!'
-                  : 'Продай что-нибудь со Склада 🎒'}
+              <div className="text-[10px] tracking-wider">
+                {tab === 'browse' ? 'Стань первым продавцом!' : 'Продай что-нибудь со Склада'}
               </div>
             </div>
           </Card>
@@ -208,10 +193,8 @@ export function Market() {
       ) : (
         <div className="space-y-3">
           {filteredLots.map((lot, index) => {
-            const typeColor = getTypeColor(lot.type)
             const isTop = lot.id === topLotId
             const isCheap = avgPrice > 0 && lot.price < avgPrice * 0.8
-            const newLot = isNew(lot.created_at)
             const isMine = lot.seller_id === userId
 
             return (
@@ -221,97 +204,82 @@ export function Market() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
               >
-                <div className={`rounded-2xl border-2 bg-gradient-to-br ${typeColor} p-4 relative overflow-hidden`}>
-                  {/* БЕЙДЖИ СВЕРХУ */}
-                  <div className="absolute top-2 right-2 flex gap-1 flex-wrap justify-end">
+                <Card>
+                  <div className="absolute top-2 right-2 flex gap-1">
                     {isTop && (
-                      <span className="bg-gradient-to-r from-yellow-400 to-amber-600 text-black text-[9px] font-black px-2 py-0.5 rounded-full shadow">
-                        💎 ТОП
+                      <span className="bg-gradient-to-r from-casino-gold to-casino-gold2 text-casino-bg text-[9px] font-display tracking-widest px-2 py-0.5 rounded-full shadow">
+                        ТОП
                       </span>
                     )}
-                    {isCheap && (
-                      <span className="bg-gradient-to-r from-green-500 to-emerald-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow">
-                        🔥 ДЁШЕВО
-                      </span>
-                    )}
-                    {newLot && (
-                      <span className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow">
-                        ⚡ НОВОЕ
+                    {isCheap && !isTop && (
+                      <span className="bg-gradient-to-r from-casino-green to-casino-greenLight text-casino-bg text-[9px] font-display tracking-widest px-2 py-0.5 rounded-full shadow">
+                        ДЁШЕВО
                       </span>
                     )}
                   </div>
 
                   <div className="flex items-center gap-3">
-                    {/* ИКОНКА ПРЕДМЕТА */}
-                    <div className="w-14 h-14 rounded-xl bg-casino-bg/60 border border-casino-border flex items-center justify-center text-3xl flex-shrink-0">
-                      {getLotIcon(lot.type)}
+                    <div className="w-14 h-14 rounded-lg bg-casino-bg/70 border border-casino-border/60 flex items-center justify-center flex-shrink-0">
+                      <LotIcon type={lot.type} />
                     </div>
 
-                    {/* ОПИСАНИЕ */}
                     <div className="flex-1 min-w-0">
-                      <div className="font-bold truncate text-casino-text">
+                      <div className="text-[9px] tracking-widest uppercase text-casino-muted font-display">
+                        {getTypeLabel(lot.type)}
+                      </div>
+                      <div className="font-display tracking-wider text-casino-text truncate">
                         {getLotTitle(lot)}
                       </div>
-
-                      {/* ЦЕНА */}
                       <div className="flex items-baseline gap-1 mt-1">
-                        <span className="text-casino-gold text-lg font-black">
-                          💎 {fmtNumber(lot.price)}
+                        <span className="text-casino-gold font-display tracking-wider text-lg">
+                          {fmtNumber(lot.price)}
                         </span>
-                        <span className="text-casino-muted text-[10px]">Tokens</span>
+                        <span className="text-casino-muted text-[9px] tracking-widest">TOKENS</span>
                       </div>
-
-                      {/* ПРОДАВЕЦ + ВРЕМЯ */}
-                      <div className="flex items-center gap-2 mt-1 text-casino-muted text-[10px]">
-                        {!isMine && (
-                          <div className="flex items-center gap-1">
-                            <span>👤</span>
-                            <span className="truncate max-w-[80px]">{lot.seller_name}</span>
-                          </div>
-                        )}
-                        {isMine && (
-                          <span className="text-casino-green font-bold">👤 Это твой лот</span>
+                      <div className="flex items-center gap-2 mt-1 text-casino-muted text-[10px] tracking-wider">
+                        {isMine ? (
+                          <span className="text-casino-greenLight font-display tracking-wider">ЭТО ТВОЙ ЛОТ</span>
+                        ) : (
+                          <span className="truncate">{lot.seller_name}</span>
                         )}
                         {lot.created_at && (
                           <>
-                            <span>•</span>
+                            <span>·</span>
                             <span>{timeAgo(lot.created_at)}</span>
                           </>
                         )}
                       </div>
                     </div>
 
-                    {/* КНОПКА */}
                     {tab === 'browse' && !isMine && (
                       <button
                         onClick={() => handleBuy(lot)}
                         disabled={buying === lot.id}
-                        className="bg-gradient-to-r from-casino-gold to-casino-gold2 text-black font-black px-4 py-3 rounded-xl text-xs active:scale-95 transition-transform disabled:opacity-50 shadow-gold flex-shrink-0"
+                        className="bg-gradient-to-r from-casino-gold to-casino-gold2 text-casino-bg font-display tracking-widest px-3 py-3 rounded-lg text-[10px] active:scale-95 disabled:opacity-50 shadow-gold flex-shrink-0"
                       >
-                        {buying === lot.id ? '⏳' : 'КУПИТЬ'}
+                        {buying === lot.id ? '...' : 'КУПИТЬ'}
                       </button>
                     )}
                     {tab === 'mylots' && isMine && (
                       <button
                         onClick={() => handleRemove(lot)}
                         disabled={removing === lot.id}
-                        className="bg-casino-bg border-2 border-casino-red text-casino-red font-bold px-3 py-3 rounded-xl text-xs active:scale-95 transition-transform disabled:opacity-50 flex-shrink-0"
+                        className="bg-casino-bg border border-casino-redLight text-casino-redLight font-display tracking-widest px-3 py-3 rounded-lg text-[10px] active:scale-95 disabled:opacity-50 flex-shrink-0"
                       >
-                        {removing === lot.id ? '⏳' : '❌ СНЯТЬ'}
+                        {removing === lot.id ? '...' : 'СНЯТЬ'}
                       </button>
                     )}
                   </div>
-                </div>
+                </Card>
               </motion.div>
             )
           })}
         </div>
       )}
 
-      {/* ИНФО ВНИЗУ */}
       {filteredLots.length > 0 && (
-        <div className="text-center text-casino-muted text-xs mt-6 mb-2">
-          📊 Лотов в разделе: <b className="text-casino-text">{filteredLots.length}</b>
+        <div className="text-center text-casino-muted text-[10px] mt-6 mb-2 tracking-widest uppercase font-display">
+          Лотов в разделе: <span className="text-casino-text">{filteredLots.length}</span>
         </div>
       )}
     </div>

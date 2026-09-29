@@ -4,7 +4,6 @@ import { Card } from '../components/Card'
 import { useTelegram } from '../hooks/useTelegram'
 import { api } from '../api/client'
 
-// ─── ТИПЫ ───
 interface ShopItem {
   id: string
   type: string
@@ -43,24 +42,21 @@ interface XpPack {
   stars: number
 }
 
-// ─── ТАБЫ ───
-const TABS = [
-  { id: 'hits', icon: '🔥', label: 'Хиты' },
-  { id: 'boost', icon: '⚡', label: 'Бусты' },
-  { id: 'vip', icon: '👑', label: 'VIP' },
-  { id: 'case', icon: '🎰', label: 'Кейсы' },
-  { id: 'xp', icon: '⭐', label: 'XP' },
-  { id: 'title', icon: '🏷️', label: 'Титулы' },
-]
-
-// ─── ЦВЕТА ПО ТИПУ ───
-const TYPE_STYLES: Record<string, { gradient: string; border: string; text: string }> = {
-  boost: { gradient: 'from-yellow-500/15 to-orange-500/15', border: 'border-yellow-500/50', text: 'text-yellow-400' },
-  title: { gradient: 'from-purple-500/15 to-pink-500/15', border: 'border-purple-500/50', text: 'text-purple-300' },
-  vip: { gradient: 'from-cyan-500/15 to-blue-500/15', border: 'border-cyan-500/50', text: 'text-cyan-300' },
-  case: { gradient: 'from-pink-500/15 to-red-500/15', border: 'border-pink-500/50', text: 'text-pink-300' },
-  xp: { gradient: 'from-green-500/15 to-emerald-500/15', border: 'border-green-500/50', text: 'text-green-300' },
+interface TokensPack {
+  id: string
+  amount: number
+  stars: number
 }
+
+const TABS = [
+  { id: 'hits', label: 'ХИТЫ' },
+  { id: 'tokens', label: 'TOKENS' },
+  { id: 'boost', label: 'БУСТЫ' },
+  { id: 'vip', label: 'VIP' },
+  { id: 'case', label: 'КЕЙСЫ' },
+  { id: 'xp', label: 'XP' },
+  { id: 'title', label: 'ТИТУЛЫ' },
+]
 
 export function Shop() {
   const { userId, haptic, hapticSuccess } = useTelegram()
@@ -72,6 +68,7 @@ export function Shop() {
   const [vipTiers, setVipTiers] = useState<VipTier[]>([])
   const [cases, setCases] = useState<CaseItem[]>([])
   const [xpPacks, setXpPacks] = useState<XpPack[]>([])
+  const [tokensPacks, setTokensPacks] = useState<TokensPack[]>([])
 
   useEffect(() => {
     loadAll()
@@ -79,369 +76,306 @@ export function Shop() {
 
   const loadAll = async () => {
     setLoading(true)
-    const [shopRes, vipRes, casesRes, xpRes] = await Promise.all([
+    const [shopRes, vipRes, casesRes, xpRes, tokensRes] = await Promise.all([
       api.getShop(),
       api.getVipTiers(),
       api.getCases(),
       api.getXpPacks(),
+      (api as any).getTokensPacks ? (api as any).getTokensPacks() : Promise.resolve([]),
     ])
     if (Array.isArray(shopRes)) setShopItems(shopRes as ShopItem[])
     if (Array.isArray(vipRes)) setVipTiers(vipRes as VipTier[])
     if (Array.isArray(casesRes)) setCases(casesRes as CaseItem[])
     if (Array.isArray(xpRes)) setXpPacks(xpRes as XpPack[])
+    if (Array.isArray(tokensRes)) setTokensPacks(tokensRes as TokensPack[])
     setLoading(false)
   }
 
   const fmt = (n: number) => n.toLocaleString('ru-RU').replace(/,/g, ' ')
 
-  // 🛒 ПОКУПКА ЗА STARS
-  const buyStars = async (payload: string, title: string, stars: number) => {
+  const openInvoice = (url: string) => {
+    hapticSuccess()
+    const tg = (window as any).Telegram?.WebApp
+    if (tg?.openInvoice) {
+      tg.openInvoice(url, (status: string) => {
+        if (status === 'paid') setTimeout(loadAll, 1500)
+      })
+    } else {
+      window.open(url, '_blank')
+    }
+  }
+
+  const buyStars = async (itemId: string) => {
     if (!userId || buying) return
     haptic('medium')
-    setBuying(payload)
+    setBuying(itemId)
     try {
-      const res = await api.buyShopItem(userId, payload) as any
-      if (res?.invoice_url) {
-        hapticSuccess()
-        const tg = (window as any).Telegram?.WebApp
-        if (tg?.openInvoice) {
-          tg.openInvoice(res.invoice_url, (status: string) => {
-            if (status === 'paid') setTimeout(loadAll, 1500)
-          })
-        } else {
-          window.open(res.invoice_url, '_blank')
-        }
-      } else if (res?.error) {
-        alert(res.error)
-      }
-    } catch (e) {
-      alert('Ошибка оплаты')
-    }
+      const res = await api.buyShopItem(userId, itemId) as any
+      if (res?.invoice_url) openInvoice(res.invoice_url)
+      else if (res?.error) alert(res.error)
+    } catch { alert('Ошибка оплаты') }
     setBuying(null)
   }
 
-  // 🎫 ПОКУПКА КЕЙСА
-  const buyCase = async (caseId: string, stars: number) => {
+  const buyCase = async (caseId: string) => {
     if (!userId || buying) return
     haptic('medium')
     setBuying(`case_${caseId}`)
     try {
       const res = await api.buyCase(userId, caseId) as any
-      if (res?.invoice_url) {
-        hapticSuccess()
-        const tg = (window as any).Telegram?.WebApp
-        if (tg?.openInvoice) {
-          tg.openInvoice(res.invoice_url, (status: string) => {
-            if (status === 'paid') setTimeout(loadAll, 1500)
-          })
-        } else {
-          window.open(res.invoice_url, '_blank')
-        }
-      }
-    } catch (e) {
-      alert('Ошибка оплаты')
-    }
+      if (res?.invoice_url) openInvoice(res.invoice_url)
+    } catch { alert('Ошибка оплаты') }
     setBuying(null)
   }
 
-  // 👑 ПОКУПКА VIP
-  const buyVip = async (tierId: number, stars: number) => {
+  const buyVip = async (tierId: number) => {
     if (!userId || buying) return
     haptic('medium')
     setBuying(`vip_${tierId}`)
     try {
       const res = await api.buyVip(userId, tierId) as any
-      if (res?.invoice_url) {
-        hapticSuccess()
-        const tg = (window as any).Telegram?.WebApp
-        if (tg?.openInvoice) {
-          tg.openInvoice(res.invoice_url, (status: string) => {
-            if (status === 'paid') setTimeout(loadAll, 1500)
-          })
-        } else {
-          window.open(res.invoice_url, '_blank')
-        }
-      }
-    } catch (e) {
-      alert('Ошибка оплаты')
-    }
+      if (res?.invoice_url) openInvoice(res.invoice_url)
+    } catch { alert('Ошибка оплаты') }
     setBuying(null)
   }
 
-  // ⭐ ПОКУПКА XP
-  const buyXp = async (packId: string, stars: number) => {
+  const buyXp = async (packId: string) => {
     if (!userId || buying) return
     haptic('medium')
     setBuying(`xp_${packId}`)
     try {
       const res = await api.buyXpPack(userId, packId) as any
-      if (res?.invoice_url) {
-        hapticSuccess()
-        const tg = (window as any).Telegram?.WebApp
-        if (tg?.openInvoice) {
-          tg.openInvoice(res.invoice_url, (status: string) => {
-            if (status === 'paid') setTimeout(loadAll, 1500)
-          })
-        } else {
-          window.open(res.invoice_url, '_blank')
-        }
-      }
-    } catch (e) {
-      alert('Ошибка оплаты')
-    }
+      if (res?.invoice_url) openInvoice(res.invoice_url)
+    } catch { alert('Ошибка оплаты') }
     setBuying(null)
   }
 
-  // 🔥 ХИТЫ — собираем лучшее
-  const getHits = (): ShopItem[] => {
-    const hits: ShopItem[] = []
-
-    // Лучший кейс (самый дорогой = обычно лучший)
-    const bestCase = cases.length > 0
-      ? [...cases].sort((a, b) => b.stars - a.stars)[0]
-      : null
-    if (bestCase) {
-      hits.push({
-        id: `hit_case_${bestCase.id}`,
-        type: 'case',
-        name: bestCase.name,
-        desc: `🔥 ТОП-кейс · ${bestCase.rewards.length} наград`,
-        stars: bestCase.stars,
-      })
-    }
-
-    // VIP 3 (Платина — обычно ХИТ)
-    const vip3 = vipTiers.find(v => v.id === 3) || vipTiers[2]
-    if (vip3) {
-      hits.push({
-        id: `hit_vip_${vip3.id}`,
-        type: 'vip',
-        name: `${vip3.icon} VIP ${vip3.id} — ${vip3.name}`,
-        desc: `💸 Кэшбэк ${vip3.cashback}% · 🎁 +${fmt(vip3.bonus)}`,
-        stars: vip3.stars,
-      })
-    }
-
-    // Лучший буст (самый дорогой / с максимальным множителем)
-    const bestBoost = shopItems.filter(i => i.type === 'boost').sort((a, b) => (b.mult || 0) - (a.mult || 0))[0]
-    if (bestBoost && bestBoost.stars) {
-      hits.push({
-        id: `hit_boost_${bestBoost.id}`,
-        type: 'boost',
-        name: bestBoost.name,
-        desc: `⚡ Множитель ×${bestBoost.mult}`,
-        stars: bestBoost.stars,
-      })
-    }
-
-    // Лучший XP-пак
-    const bestXp = xpPacks.length > 0
-      ? [...xpPacks].sort((a, b) => b.xp - a.xp)[0]
-      : null
-    if (bestXp) {
-      hits.push({
-        id: `hit_xp_${bestXp.id}`,
-        type: 'xp',
-        name: `⭐ +${bestXp.xp} XP`,
-        desc: `📊 Мгновенно ${bestXp.xp} XP`,
-        stars: bestXp.stars,
-      })
-    }
-
-    return hits
+  const buyTokensPack = async (packId: string) => {
+    if (!userId || buying) return
+    haptic('medium')
+    setBuying(`tokens_${packId}`)
+    try {
+      const apiAny = api as any
+      if (!apiAny.buyTokensPack) {
+        alert('Покупка Tokens временно недоступна')
+        setBuying(null)
+        return
+      }
+      const res = await apiAny.buyTokensPack(userId, packId) as any
+      if (res?.invoice_url) openInvoice(res.invoice_url)
+      else if (res?.error) alert(res.error)
+    } catch { alert('Ошибка оплаты') }
+    setBuying(null)
   }
 
-  // ─── РЕНДЕР КАРТОЧКИ ТОВАРА (магазин) ───
   const renderShopCard = (item: ShopItem) => {
-    const style = TYPE_STYLES[item.type] || TYPE_STYLES.boost
-    const icon = item.type === 'boost' ? '⚡' : item.type === 'title' ? '🏷️' : item.type === 'vip' ? '👑' : '🎁'
-    const price = item.stars ? `${item.stars} ⭐` : '—'
+    const price = item.stars ? `${item.stars} STARS` : '—'
+    const typeLabel = item.type === 'boost' ? 'БУСТ' : item.type === 'title' ? 'ТИТУЛ' : item.type === 'vip' ? 'VIP' : 'ТОВАР'
 
     return (
-      <motion.div
-        key={item.id}
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        whileTap={{ scale: 0.98 }}
-      >
-        <div className={`rounded-2xl border-2 ${style.border} bg-gradient-to-br ${style.gradient} p-4`}>
+      <motion.div key={item.id} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
+        <Card>
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-casino-bg/70 border border-casino-border flex items-center justify-center text-2xl flex-shrink-0">
-              {icon}
+            <div className="w-12 h-12 rounded-lg bg-casino-bg/70 border border-casino-border/60 flex items-center justify-center">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="1.6">
+                {item.type === 'boost' && <path d="M13 2 L4 14 H11 L10 22 L19 10 H12 Z" />}
+                {item.type === 'title' && <><path d="M4 7 H20 L21 20 A1 1 0 0 1 20 21 H4 A1 1 0 0 1 3 20 Z" /><path d="M9 7 V4 H15 V7" /></>}
+                {item.type === 'vip' && <path d="M3 17 L5 7 L10 11 L12 5 L14 11 L19 7 L21 17 Z" />}
+                {item.type !== 'boost' && item.type !== 'title' && item.type !== 'vip' && <circle cx="12" cy="12" r="9" />}
+              </svg>
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-bold text-sm">{item.name}</div>
-              {item.desc && (
-                <div className="text-casino-muted text-[10px] mt-0.5">{item.desc}</div>
-              )}
+              <div className="text-[9px] tracking-widest uppercase text-casino-muted font-display">{typeLabel}</div>
+              <div className="font-display tracking-wider text-casino-text truncate">{item.name}</div>
+              {item.desc && <div className="text-casino-muted text-[10px] mt-0.5">{item.desc}</div>}
             </div>
           </div>
           <button
-            onClick={() => buyStars(item.id, item.name, item.stars || 0)}
+            onClick={() => buyStars(item.id)}
             disabled={buying === item.id}
-            className="w-full mt-3 bg-gradient-to-r from-casino-gold to-casino-gold2 text-black font-bold py-2.5 rounded-xl text-sm active:scale-95 transition-transform disabled:opacity-50"
+            className="w-full mt-3 bg-gradient-to-r from-casino-gold to-casino-gold2 text-casino-bg font-display py-2.5 rounded-lg text-sm tracking-widest active:scale-95 disabled:opacity-50"
           >
-            {buying === item.id ? '⏳...' : `⭐ КУПИТЬ ЗА ${price}`}
+            {buying === item.id ? '...' : `КУПИТЬ ЗА ${price}`}
           </button>
-        </div>
+        </Card>
       </motion.div>
     )
   }
 
-  // ─── РЕНДЕР VIP ───
-  const renderVipCard = (tier: VipTier) => {
-    const colors: Record<number, { grad: string; border: string; text: string; badge?: { text: string; color: string } }> = {
-      1: { grad: 'from-gray-400/15 to-gray-600/15', border: 'border-gray-400/50', text: 'text-gray-300' },
-      2: { grad: 'from-yellow-400/20 to-yellow-600/15', border: 'border-yellow-400/60', text: 'text-yellow-400', badge: { text: '💰 ВЫГОДНО', color: 'bg-yellow-500' } },
-      3: { grad: 'from-purple-500/20 to-pink-500/15', border: 'border-purple-400/60', text: 'text-purple-300', badge: { text: '🔥 ХИТ', color: 'bg-gradient-to-r from-orange-500 to-red-500' } },
-      4: { grad: 'from-cyan-400/20 to-blue-500/15', border: 'border-cyan-400/60', text: 'text-cyan-300' },
-      5: { grad: 'from-yellow-500/25 to-amber-600/20', border: 'border-yellow-500/70', text: 'text-yellow-400', badge: { text: '👑 ЛУЧШЕЕ', color: 'bg-gradient-to-r from-yellow-400 to-amber-600' } },
-    }
-    const c = colors[tier.id] || colors[1]
-
+  const renderTokensPack = (pack: TokensPack) => {
     return (
-      <motion.div
-        key={tier.id}
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        whileTap={{ scale: 0.98 }}
-      >
-        <div className={`relative rounded-2xl border-2 ${c.border} bg-gradient-to-br ${c.grad} p-4`}>
-          {c.badge && (
-            <div className={`absolute top-2 right-2 ${c.badge.color} text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow`}>
-              {c.badge.text}
-            </div>
-          )}
-          <div className="flex items-center gap-3 mb-3">
-            <div className="text-4xl">{tier.icon}</div>
-            <div className="flex-1">
-              <div className={`font-bold ${c.text}`}>VIP {tier.id} — {tier.name}</div>
-              <div className="text-casino-gold text-sm font-black">{tier.stars} ⭐</div>
-            </div>
-          </div>
-          <div className="space-y-1 text-[11px] mb-3">
-            <div className="flex justify-between">
-              <span className="text-casino-muted">💸 Кэшбэк</span>
-              <span className={`font-bold ${c.text}`}>{tier.cashback}%</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-casino-muted">🎁 Бонус</span>
-              <span className="font-bold">+{fmt(tier.bonus)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-casino-muted">⏱ Срок</span>
-              <span className="font-bold">{tier.duration_days} дней</span>
-            </div>
-          </div>
-          <button
-            onClick={() => buyVip(tier.id, tier.stars)}
-            disabled={buying === `vip_${tier.id}`}
-            className="w-full bg-gradient-to-r from-casino-gold to-casino-gold2 text-black font-bold py-2.5 rounded-xl text-sm active:scale-95 disabled:opacity-50"
-          >
-            {buying === `vip_${tier.id}` ? '⏳...' : `⭐ КУПИТЬ ЗА ${tier.stars} ⭐`}
-          </button>
-        </div>
-      </motion.div>
-    )
-  }
-
-  // ─── РЕНДЕР КЕЙСА ───
-  const renderCaseCard = (c: CaseItem) => {
-    const style = TYPE_STYLES.case
-    return (
-      <motion.div
-        key={c.id}
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        whileTap={{ scale: 0.98 }}
-      >
-        <div className={`rounded-2xl border-2 ${style.border} bg-gradient-to-br ${style.gradient} p-4`}>
+      <motion.div key={pack.id} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
+        <Card>
           <div className="flex items-center gap-3">
-            <div className="w-14 h-14 rounded-xl bg-casino-bg/70 border border-casino-border flex items-center justify-center text-3xl flex-shrink-0">
-              🎰
+            <div className="w-14 h-14 rounded-lg bg-casino-bg/70 border border-casino-gold/40 flex items-center justify-center">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="1.6">
+                <path d="M6 3 H18 L22 9 L12 21 L2 9 Z" />
+                <path d="M2 9 H22 M12 21 L9 9 L12 3 L15 9 L12 21" />
+              </svg>
             </div>
             <div className="flex-1">
-              <div className="font-bold">{c.name}</div>
-              <div className="text-casino-muted text-[10px] mt-0.5">{c.desc || 'Кейс с наградами'}</div>
-              <div className="text-casino-gold text-sm font-black mt-1">{c.stars} ⭐</div>
+              <div className="text-[9px] tracking-widest uppercase text-casino-muted font-display">TOKENS</div>
+              <div className="font-display tracking-wider text-casino-gold text-lg">
+                {fmt(pack.amount)} TOKENS
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="font-display tracking-wider text-casino-text text-lg">{pack.stars}</div>
+              <div className="text-[9px] tracking-widest uppercase text-casino-muted">STARS</div>
             </div>
           </div>
           <button
-            onClick={() => buyCase(c.id, c.stars)}
-            disabled={buying === `case_${c.id}`}
-            className="w-full mt-3 bg-gradient-to-r from-casino-gold to-casino-gold2 text-black font-bold py-2.5 rounded-xl text-sm active:scale-95 disabled:opacity-50"
+            onClick={() => buyTokensPack(pack.id)}
+            disabled={buying === `tokens_${pack.id}`}
+            className="w-full mt-3 bg-gradient-to-r from-casino-gold to-casino-gold2 text-casino-bg font-display py-3 rounded-lg text-sm tracking-widest active:scale-95 disabled:opacity-50"
           >
-            {buying === `case_${c.id}` ? '⏳...' : `⭐ ОТКРЫТЬ ЗА ${c.stars} ⭐`}
+            {buying === `tokens_${pack.id}` ? '...' : 'КУПИТЬ'}
           </button>
-        </div>
+        </Card>
       </motion.div>
     )
   }
 
-  // ─── РЕНДЕР XP ───
-  const renderXpCard = (p: XpPack) => {
-    const style = TYPE_STYLES.xp
+  const renderVipCard = (tier: VipTier) => {
     return (
-      <motion.div
-        key={p.id}
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        whileTap={{ scale: 0.98 }}
-      >
-        <div className={`rounded-2xl border-2 ${style.border} bg-gradient-to-br ${style.gradient} p-4`}>
+      <motion.div key={tier.id} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
+        <Card>
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-12 h-12 rounded-lg bg-casino-bg/70 border border-casino-gold/40 flex items-center justify-center">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="#D4AF37">
+                <path d="M3 17 L5 7 L10 11 L12 5 L14 11 L19 7 L21 17 Z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <div className="font-display tracking-wider text-casino-gold">
+                VIP {tier.id} — {tier.name.toUpperCase()}
+              </div>
+              <div className="text-casino-gold text-sm font-display tracking-widest mt-0.5">
+                {tier.stars} STARS
+              </div>
+            </div>
+          </div>
+          <div className="space-y-1.5 text-[11px] mb-3">
+            <div className="flex justify-between">
+              <span className="text-casino-muted tracking-wider">КЭШБЭК</span>
+              <span className="font-display tracking-wider text-casino-text">{tier.cashback}%</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-casino-muted tracking-wider">БОНУС</span>
+              <span className="font-display tracking-wider text-casino-text">+{fmt(tier.bonus)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-casino-muted tracking-wider">СРОК</span>
+              <span className="font-display tracking-wider text-casino-text">{tier.duration_days} ДН.</span>
+            </div>
+          </div>
+          <button
+            onClick={() => buyVip(tier.id)}
+            disabled={buying === `vip_${tier.id}`}
+            className="w-full bg-gradient-to-r from-casino-gold to-casino-gold2 text-casino-bg font-display py-3 rounded-lg text-sm tracking-widest active:scale-95 disabled:opacity-50"
+          >
+            {buying === `vip_${tier.id}` ? '...' : `КУПИТЬ ЗА ${tier.stars}`}
+          </button>
+        </Card>
+      </motion.div>
+    )
+  }
+
+  const renderCaseCard = (c: CaseItem) => {
+    return (
+      <motion.div key={c.id} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
+        <Card>
+          <div className="flex items-center gap-3">
+            <div className="w-14 h-14 rounded-lg bg-casino-bg/70 border border-casino-gold/40 flex items-center justify-center">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="1.6">
+                <rect x="3" y="7" width="18" height="14" rx="2" />
+                <path d="M3 11 H21 M12 7 V11" />
+                <path d="M9 7 V4 H15 V7" />
+                <circle cx="12" cy="15" r="2" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <div className="font-display tracking-wider text-casino-text">{c.name}</div>
+              <div className="text-casino-muted text-[10px] mt-0.5">{c.desc || 'Кейс с наградами'}</div>
+              <div className="text-casino-gold text-sm font-display tracking-widest mt-1">{c.stars} STARS</div>
+            </div>
+          </div>
+          <button
+            onClick={() => buyCase(c.id)}
+            disabled={buying === `case_${c.id}`}
+            className="w-full mt-3 bg-gradient-to-r from-casino-gold to-casino-gold2 text-casino-bg font-display py-3 rounded-lg text-sm tracking-widest active:scale-95 disabled:opacity-50"
+          >
+            {buying === `case_${c.id}` ? '...' : `ОТКРЫТЬ ЗА ${c.stars}`}
+          </button>
+        </Card>
+      </motion.div>
+    )
+  }
+
+  const renderXpCard = (p: XpPack) => {
+    return (
+      <motion.div key={p.id} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
+        <Card>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="text-4xl">⭐</div>
+              <div className="w-12 h-12 rounded-lg bg-casino-bg/70 border border-casino-gold/40 flex items-center justify-center">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="1.6">
+                  <path d="M12 2 L15 8 L22 9 L17 14 L18 21 L12 17.5 L6 21 L7 14 L2 9 L9 8 Z" />
+                </svg>
+              </div>
               <div>
-                <div className="font-bold text-lg">+{p.xp} XP</div>
-                <div className="text-casino-muted text-[10px]">Мгновенно</div>
+                <div className="font-display tracking-wider text-casino-text text-lg">+{p.xp} XP</div>
+                <div className="text-casino-muted text-[10px] tracking-widest uppercase">МГНОВЕННО</div>
               </div>
             </div>
             <button
-              onClick={() => buyXp(p.id, p.stars)}
+              onClick={() => buyXp(p.id)}
               disabled={buying === `xp_${p.id}`}
-              className="bg-gradient-to-r from-casino-gold to-casino-gold2 text-black font-bold px-4 py-3 rounded-xl text-sm active:scale-95 disabled:opacity-50"
+              className="bg-gradient-to-r from-casino-gold to-casino-gold2 text-casino-bg font-display px-4 py-3 rounded-lg text-sm tracking-widest active:scale-95 disabled:opacity-50"
             >
-              {buying === `xp_${p.id}` ? '⏳' : `${p.stars} ⭐`}
+              {buying === `xp_${p.id}` ? '...' : `${p.stars}`}
             </button>
           </div>
-        </div>
+        </Card>
       </motion.div>
     )
   }
 
-  // ─── СЕКЦИЯ ───
-  const renderSection = (title: string, children: React.ReactNode) => (
-    <div className="mb-6">
-      <h2 className="text-sm font-bold text-casino-muted mb-3 px-1">{title}</h2>
-      <div className="space-y-3">{children}</div>
-    </div>
-  )
+  const getHits = (): ShopItem[] => {
+    const hits: ShopItem[] = []
+    const bestCase = cases.length > 0 ? [...cases].sort((a, b) => b.stars - a.stars)[0] : null
+    if (bestCase) hits.push({ id: `hit_case_${bestCase.id}`, type: 'case', name: bestCase.name, desc: `ТОП-КЕЙС · ${bestCase.rewards.length} наград`, stars: bestCase.stars })
+    const vip3 = vipTiers.find(v => v.id === 3) || vipTiers[2]
+    if (vip3) hits.push({ id: `hit_vip_${vip3.id}`, type: 'vip', name: `VIP ${vip3.id} — ${vip3.name}`, desc: `Кэшбэк ${vip3.cashback}% · +${fmt(vip3.bonus)}`, stars: vip3.stars })
+    const bestBoost = shopItems.filter(i => i.type === 'boost').sort((a, b) => (b.mult || 0) - (a.mult || 0))[0]
+    if (bestBoost && bestBoost.stars) hits.push({ id: `hit_boost_${bestBoost.id}`, type: 'boost', name: bestBoost.name, desc: `Множитель ×${bestBoost.mult}`, stars: bestBoost.stars })
+    const bestXp = xpPacks.length > 0 ? [...xpPacks].sort((a, b) => b.xp - a.xp)[0] : null
+    if (bestXp) hits.push({ id: `hit_xp_${bestXp.id}`, type: 'xp', name: `+${bestXp.xp} XP`, desc: `Мгновенно ${bestXp.xp} XP`, stars: bestXp.stars })
+    return hits
+  }
 
-  // ─── КОНТЕНТ ПО ТАБАМ ───
   const renderContent = () => {
-    const hits = getHits()
-
     if (activeTab === 'hits') {
+      const hits = getHits()
       return (
-        <div>
+        <div className="space-y-3">
           {hits.map(item => {
             if (item.type === 'case') {
-              const realCase = cases.find(c => `hit_case_${c.id}` === item.id)
-              if (realCase) return renderCaseCard(realCase)
+              const rc = cases.find(c => `hit_case_${c.id}` === item.id)
+              if (rc) return renderCaseCard(rc)
             }
             if (item.type === 'vip') {
-              const vipId = parseInt(item.id.replace('hit_vip_', ''))
-              const tier = vipTiers.find(v => v.id === vipId)
+              const vid = parseInt(item.id.replace('hit_vip_', ''))
+              const tier = vipTiers.find(v => v.id === vid)
               if (tier) return renderVipCard(tier)
             }
             if (item.type === 'boost') {
-              const realItem = shopItems.find(s => `hit_boost_${s.id}` === item.id)
-              if (realItem) return renderShopCard(realItem)
+              const ri = shopItems.find(s => `hit_boost_${s.id}` === item.id)
+              if (ri) return renderShopCard(ri)
             }
             if (item.type === 'xp') {
-              const realXp = xpPacks.find(x => `hit_xp_${x.id}` === item.id)
-              if (realXp) return renderXpCard(realXp)
+              const rx = xpPacks.find(x => `hit_xp_${x.id}` === item.id)
+              if (rx) return renderXpCard(rx)
             }
             return null
           })}
@@ -449,35 +383,41 @@ export function Shop() {
       )
     }
 
+    if (activeTab === 'tokens') {
+      return tokensPacks.length === 0
+        ? <Card><div className="text-center py-8 text-casino-muted font-display tracking-widest">СКОРО</div></Card>
+        : <div className="space-y-3">{tokensPacks.map(renderTokensPack)}</div>
+    }
+
     if (activeTab === 'boost') {
       const boosts = shopItems.filter(i => i.type === 'boost')
       return boosts.length === 0
-        ? <Card><div className="text-center py-8 text-casino-muted">Пусто</div></Card>
+        ? <Card><div className="text-center py-8 text-casino-muted font-display tracking-widest">ПУСТО</div></Card>
         : <div className="space-y-3">{boosts.map(renderShopCard)}</div>
     }
 
     if (activeTab === 'title') {
       const titles = shopItems.filter(i => i.type === 'title')
       return titles.length === 0
-        ? <Card><div className="text-center py-8 text-casino-muted">Пусто</div></Card>
+        ? <Card><div className="text-center py-8 text-casino-muted font-display tracking-widest">ПУСТО</div></Card>
         : <div className="space-y-3">{titles.map(renderShopCard)}</div>
     }
 
     if (activeTab === 'vip') {
       return vipTiers.length === 0
-        ? <Card><div className="text-center py-8 text-casino-muted">Пусто</div></Card>
+        ? <Card><div className="text-center py-8 text-casino-muted font-display tracking-widest">ПУСТО</div></Card>
         : <div className="space-y-3">{vipTiers.map(renderVipCard)}</div>
     }
 
     if (activeTab === 'case') {
       return cases.length === 0
-        ? <Card><div className="text-center py-8 text-casino-muted">Пусто</div></Card>
+        ? <Card><div className="text-center py-8 text-casino-muted font-display tracking-widest">ПУСТО</div></Card>
         : <div className="space-y-3">{cases.map(renderCaseCard)}</div>
     }
 
     if (activeTab === 'xp') {
       return xpPacks.length === 0
-        ? <Card><div className="text-center py-8 text-casino-muted">Пусто</div></Card>
+        ? <Card><div className="text-center py-8 text-casino-muted font-display tracking-widest">ПУСТО</div></Card>
         : <div className="space-y-3">{xpPacks.map(renderXpCard)}</div>
     }
 
@@ -488,43 +428,39 @@ export function Shop() {
     return (
       <div className="flex items-center justify-center h-64 text-casino-muted">
         <div className="text-center">
-          <div className="text-4xl mb-2 animate-pulse">🛒</div>
-          Загрузка магазина...
+          <div className="w-8 h-8 border-2 border-casino-gold/30 border-t-casino-gold rounded-full animate-spin mx-auto mb-3" />
+          <div className="text-[10px] tracking-widest uppercase">Загрузка</div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="p-4">
-      {/* ЗАГОЛОВОК */}
+    <div className="p-4 pb-24">
       <div className="text-center mb-4">
-        <h1 className="text-2xl font-bold text-casino-gold">🛒 МАГАЗИН</h1>
+        <h1 className="font-display text-3xl tracking-widest text-casino-gold">МАГАЗИН</h1>
       </div>
 
-      {/* ТАБЫ — В ОДИН РЯД, СКРОЛЛ */}
-      <div className="flex gap-2 mb-4 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
+      <div className="flex gap-1.5 mb-4 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => { haptic('light'); setActiveTab(tab.id) }}
-            className={`flex-shrink-0 px-4 py-2 rounded-xl font-bold text-xs transition-all whitespace-nowrap ${
+            className={`flex-shrink-0 px-3.5 py-2 rounded-lg font-display text-[10px] tracking-widest transition-all whitespace-nowrap border ${
               activeTab === tab.id
-                ? 'bg-gradient-to-r from-casino-gold to-casino-gold2 text-black shadow-gold'
-                : 'bg-casino-card text-casino-muted border border-casino-border'
+                ? 'bg-gradient-to-r from-casino-gold to-casino-gold2 text-casino-bg border-transparent shadow-gold'
+                : 'bg-casino-card text-casino-muted border-casino-border/60'
             }`}
           >
-            {tab.icon} {tab.label}
+            {tab.label}
           </button>
         ))}
       </div>
 
-      {/* КОНТЕНТ */}
       {renderContent()}
 
-      {/* ИНФО */}
-      <div className="text-center text-casino-muted text-[10px] mt-6 mb-2">
-        💡 Все покупки за Telegram Stars ⭐
+      <div className="text-center text-casino-muted text-[9px] mt-6 mb-2 tracking-widest uppercase font-display">
+        Все покупки за Telegram Stars
       </div>
     </div>
   )
