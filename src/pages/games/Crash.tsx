@@ -29,6 +29,31 @@ interface CrashState {
 
 export function Crash() {
   const { userId, username, haptic, hapticSuccess, hapticError } = useTelegram()
+    const [gameOff, setGameOff] = useState(false)
+
+  useEffect(() => {
+    api.getGamesStatus().then((res: any) => {
+      if (res && res.crash === false) setGameOff(true)
+    })
+  }, [])
+
+  if (gameOff) {
+    return (
+      <div className="p-4 pb-24">
+        <div className="text-center py-20">
+          <div className="flex justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#6B6B7B" strokeWidth="1.2">
+              <path d="M4 20 L20 4" />
+              <path d="M14 4 H20 V10" />
+              <circle cx="6" cy="18" r="2" fill="#6B6B7B" />
+            </svg>
+          </div>
+          <div className="font-display text-2xl tracking-widest text-casino-muted">В РАЗРАБОТКЕ</div>
+          <div className="text-casino-muted text-[10px] tracking-wider mt-2">🔧 Игра временно недоступна</div>
+        </div>
+      </div>
+    )
+  }
 
   const [state, setState] = useState<CrashState | null>(null)
   const [betAmount, setBetAmount] = useState('100')
