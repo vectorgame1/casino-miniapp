@@ -1,10 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card } from '../../components/Card'
+import { BetInput } from '../../components/BetInput'
 import { useTelegram } from '../../hooks/useTelegram'
 import { api } from '../../api/client'
-
-const BET_OPTIONS = [100, 500, 1000, 5000, 10000]
 
 interface CoinProps {
   onBack: () => void
@@ -15,6 +14,7 @@ type Side = 'heads' | 'tails'
 export function Coin({ onBack }: CoinProps) {
   const { userId, haptic, hapticSuccess, hapticError } = useTelegram()
   const [bet, setBet] = useState(1000)
+  const [balance, setBalance] = useState(0)
   const [choice, setChoice] = useState<Side>('heads')
   const [playing, setPlaying] = useState(false)
   const [flipping, setFlipping] = useState(false)
@@ -22,8 +22,20 @@ export function Coin({ onBack }: CoinProps) {
   const [win, setWin] = useState<boolean | null>(null)
   const [amount, setAmount] = useState(0)
 
+  useEffect(() => {
+    if (!userId) return
+    api.getBalance(userId).then((res: any) => {
+      if (res?.balance !== undefined) setBalance(Number(res.balance))
+    })
+  }, [userId])
+
   const handleFlip = async () => {
     if (playing) return
+    if (bet > balance && balance > 0) {
+      hapticError()
+      alert('Недостаточно средств')
+      return
+    }
     haptic('medium')
     setPlaying(true)
     setResult(null)
@@ -64,7 +76,7 @@ export function Coin({ onBack }: CoinProps) {
 
   return (
     <div className="p-4 pb-24">
-      <button onClick={onBack} className="text-casino-muted mb-4 text-xs tracking-widest uppercase">
+      <button onClick={onBack} className="text-casino-muted mb-4 text-[10px] tracking-widest uppercase">
         ← Назад
       </button>
 
@@ -87,17 +99,10 @@ export function Coin({ onBack }: CoinProps) {
           <motion.div
             animate={
               flipping
-                ? {
-                    rotateY: [0, 360, 720, 1080, 1440],
-                    scale: [1, 1.4, 1.1, 1.4, 1],
-                  }
+                ? { rotateY: [0, 360, 720, 1080, 1440], scale: [1, 1.4, 1.1, 1.4, 1] }
                 : { rotateY: 0, scale: 1 }
             }
-            transition={
-              flipping
-                ? { duration: 2.5, ease: 'easeInOut' }
-                : { duration: 0.3 }
-            }
+            transition={flipping ? { duration: 2.5, ease: 'easeInOut' } : { duration: 0.3 }}
             className="w-36 h-36 rounded-full flex items-center justify-center relative"
             style={{
               background: 'linear-gradient(135deg, #E8C860 0%, #D4AF37 25%, #B8941F 50%, #D4AF37 75%, #E8C860 100%)',
@@ -108,10 +113,7 @@ export function Coin({ onBack }: CoinProps) {
           >
             <div
               className="absolute inset-3 rounded-full"
-              style={{
-                border: '2px solid rgba(139,105,20,0.6)',
-                boxShadow: 'inset 0 0 10px rgba(139,105,20,0.4)',
-              }}
+              style={{ border: '2px solid rgba(139,105,20,0.6)', boxShadow: 'inset 0 0 10px rgba(139,105,20,0.4)' }}
             />
 
             <div className="text-6xl relative z-10 font-display text-casino-bg">
@@ -135,25 +137,13 @@ export function Coin({ onBack }: CoinProps) {
                 </svg>
               )}
             </div>
-
-            <div
-              className="absolute top-3 left-6 w-10 h-10 rounded-full opacity-60"
-              style={{
-                background: 'radial-gradient(circle, rgba(255,255,255,0.9) 0%, transparent 70%)',
-                filter: 'blur(4px)',
-              }}
-            />
           </motion.div>
         </div>
       </Card>
 
       <AnimatePresence>
         {result && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-4 text-center"
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-4 text-center">
             <div className="font-display text-2xl tracking-widest text-casino-text mb-2">
               {result === 'heads' ? 'ОРЁЛ' : 'РЕШКА'}
             </div>
@@ -167,20 +157,7 @@ export function Coin({ onBack }: CoinProps) {
       {!playing && !result && (
         <>
           <Card className="mt-4">
-            <div className="text-casino-muted text-[10px] mb-2 tracking-widest uppercase">Ставка</div>
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {BET_OPTIONS.map((b) => (
-                <button
-                  key={b}
-                  onClick={() => { haptic('light'); setBet(b) }}
-                  className={`flex-shrink-0 px-4 py-2 rounded-lg font-display text-sm tracking-wider ${
-                    bet === b ? 'bg-gradient-to-r from-casino-gold to-casino-gold2 text-casino-bg' : 'bg-casino-bg border border-casino-border/60 text-casino-muted'
-                  }`}
-                >
-                  {fmtNumber(b)}
-                </button>
-              ))}
-            </div>
+            <BetInput bet={bet} setBet={setBet} balance={balance} minBet={10} gameLabel="Ставка" />
           </Card>
 
           <Card className="mt-3">

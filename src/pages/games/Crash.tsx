@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Card } from '../../components/Card'
 import { CrashRocket } from '../../components/CrashRocket'
 import { CrashBg } from '../../components/CrashBg'
+import { BetInput } from '../../components/BetInput'
 import { useTelegram } from '../../hooks/useTelegram'
 import { api } from '../../api/client'
 
@@ -78,12 +79,11 @@ export function Crash() {
     }
   }, [userId])
 
-  // ⚠️ ПЛАВНОЕ ОТОБРАЖЕНИЕ — УВЕЛИЧИЛ ВРЕМЯ С 280 ДО 500 МС
   useEffect(() => {
     if (!state) return
     const target = state.multiplier
     const start = displayMultRef.current
-    const duration = 500  // ← было 280
+    const duration = 500
     const startTime = performance.now()
 
     if (rafRef.current) cancelAnimationFrame(rafRef.current)
@@ -228,7 +228,7 @@ export function Crash() {
             )}
           </AnimatePresence>
 
-          {/* ВЗРЫВ */}
+          {/* ВЗРЫВ — SVG */}
           <AnimatePresence>
             {status === 'crashed' && (
               <motion.div
@@ -259,7 +259,6 @@ export function Crash() {
                     </radialGradient>
                   </defs>
 
-                  {/* Круги взрыва */}
                   <circle r="20" fill="url(#expl1)">
                     <animate attributeName="r" from="10" to="180" dur="0.9s" fill="freeze" />
                     <animate attributeName="opacity" from="1" to="0" dur="0.9s" fill="freeze" />
@@ -273,22 +272,12 @@ export function Crash() {
                     <animate attributeName="opacity" from="0.9" to="0" dur="1.1s" fill="freeze" />
                   </circle>
 
-                  {/* Лучи */}
                   {Array.from({ length: 16 }).map((_, i) => {
                     const angle = (i * 22.5) * Math.PI / 180
                     const x2 = Math.cos(angle) * 170
                     const y2 = Math.sin(angle) * 170
                     return (
-                      <line
-                        key={i}
-                        x1="0"
-                        y1="0"
-                        x2={x2}
-                        y2={y2}
-                        stroke={i % 2 === 0 ? '#FFD700' : '#C41E3A'}
-                        strokeWidth="4"
-                        strokeLinecap="round"
-                      >
+                      <line key={i} x1="0" y1="0" x2={x2} y2={y2} stroke={i % 2 === 0 ? '#FFD700' : '#C41E3A'} strokeWidth="4" strokeLinecap="round">
                         <animate attributeName="opacity" from="1" to="0" dur="0.7s" fill="freeze" />
                         <animate attributeName="x2" from="0" to={x2} dur="0.7s" fill="freeze" />
                         <animate attributeName="y2" from="0" to={y2} dur="0.7s" fill="freeze" />
@@ -296,20 +285,13 @@ export function Crash() {
                     )
                   })}
 
-                  {/* Искры */}
                   {Array.from({ length: 20 }).map((_, i) => {
                     const angle = Math.random() * Math.PI * 2
                     const dist = 100 + Math.random() * 100
                     const x = Math.cos(angle) * dist
                     const y = Math.sin(angle) * dist
                     return (
-                      <circle
-                        key={`spark-${i}`}
-                        cx="0"
-                        cy="0"
-                        r="3"
-                        fill={i % 3 === 0 ? '#FFF' : '#FFD700'}
-                      >
+                      <circle key={`spark-${i}`} cx="0" cy="0" r="3" fill={i % 3 === 0 ? '#FFF' : '#FFD700'}>
                         <animate attributeName="cx" from="0" to={x} dur="1.3s" fill="freeze" />
                         <animate attributeName="cy" from="0" to={y} dur="1.3s" fill="freeze" />
                         <animate attributeName="opacity" from="1" to="0" dur="1.3s" fill="freeze" />
@@ -318,7 +300,6 @@ export function Crash() {
                     )
                   })}
 
-                  {/* Центральный */}
                   <circle r="20" fill="#FFF">
                     <animate attributeName="r" from="0" to="40" dur="0.25s" fill="freeze" />
                     <animate attributeName="opacity" from="1" to="0" dur="0.7s" fill="freeze" />
@@ -339,15 +320,8 @@ export function Crash() {
             </div>
             <motion.div
               className="font-display"
-              animate={
-                status === 'running'
-                  ? { scale: [1, 1.05, 1] }
-                  : { scale: 1 }
-              }
-              transition={{
-                duration: 0.4,
-                repeat: status === 'running' ? Infinity : 0,
-              }}
+              animate={status === 'running' ? { scale: [1, 1.05, 1] } : { scale: 1 }}
+              transition={{ duration: 0.4, repeat: status === 'running' ? Infinity : 0 }}
               style={{
                 fontSize: '72px',
                 lineHeight: 1,
@@ -379,35 +353,19 @@ export function Crash() {
         {/* МОЯ СТАВКА */}
         {myBet && (
           <div className="relative z-10 mb-3">
-            <Card
-              className={
-                isMyBetCashedOut
-                  ? 'border-casino-greenLight/60'
-                  : 'border-casino-gold/60'
-              }
-            >
+            <Card className={isMyBetCashedOut ? 'border-casino-greenLight/60' : 'border-casino-gold/60'}>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex-1 min-w-0">
-                  <div className="text-[10px] text-casino-muted tracking-widest uppercase font-display">
-                    Твоя ставка
-                  </div>
-                  <div className="font-display text-casino-text truncate tracking-wider text-lg">
-                    {fmt(myBet.bet)} TOKENS
-                  </div>
+                  <div className="text-[10px] text-casino-muted tracking-widest uppercase font-display">Твоя ставка</div>
+                  <div className="font-display text-casino-text truncate tracking-wider text-lg">{fmt(myBet.bet)} TOKENS</div>
                   {myBet.auto_cashout && (
-                    <div className="text-[10px] text-casino-gold font-display tracking-widest">
-                      АВТО ×{myBet.auto_cashout}
-                    </div>
+                    <div className="text-[10px] text-casino-gold font-display tracking-widest">АВТО ×{myBet.auto_cashout}</div>
                   )}
                 </div>
                 {isMyBetCashedOut ? (
                   <div className="text-right">
-                    <div className="text-casino-greenLight font-display text-lg tracking-wider">
-                      ×{myBet.cashed_out_at?.toFixed(2)}
-                    </div>
-                    <div className="text-casino-greenLight text-sm font-display tracking-wider">
-                      +{fmt(myBet.won)}
-                    </div>
+                    <div className="text-casino-greenLight font-display text-lg tracking-wider">×{myBet.cashed_out_at?.toFixed(2)}</div>
+                    <div className="text-casino-greenLight text-sm font-display tracking-wider">+{fmt(myBet.won)}</div>
                   </div>
                 ) : status === 'running' && isMyBetActive ? (
                   <motion.button
@@ -434,40 +392,23 @@ export function Crash() {
         {/* КНОПКИ СТАВКИ */}
         {status === 'waiting' && !myBet && (
           <div className="relative z-10 mb-3 space-y-2">
-            <div className="flex gap-2">
-              <input
-                type="number"
-                value={betAmount}
-                onChange={(e) => setBetAmount(e.target.value)}
-                placeholder="Ставка"
-                className="flex-1 bg-casino-bg border border-casino-border/60 rounded-xl px-4 py-3 text-casino-text text-center font-display tracking-wider text-lg"
+            <Card>
+              <BetInput
+                bet={parseInt(betAmount) || 100}
+                setBet={(v) => setBetAmount(v.toString())}
+                balance={balance}
+                minBet={10}
+                gameLabel="Ставка"
               />
-              <input
-                type="number"
-                value={autoCashout}
-                onChange={(e) => setAutoCashout(e.target.value)}
-                placeholder="Авто ×"
-                className="w-28 bg-casino-bg border border-casino-border/60 rounded-xl px-2 py-3 text-casino-gold text-center font-display tracking-wider"
-              />
-            </div>
+            </Card>
 
-            <div className="flex gap-1.5">
-              {[100, 500, 1000, 5000, 10000].map((v) => (
-                <button
-                  key={v}
-                  onClick={() => setBetAmount(v.toString())}
-                  className="flex-1 bg-casino-bg border border-casino-border/60 text-casino-muted py-2.5 rounded-xl text-xs font-display tracking-wider active:scale-95"
-                >
-                  {v >= 1000 ? `${v / 1000}K` : v}
-                </button>
-              ))}
-              <button
-                onClick={() => setBetAmount(Math.floor(balance).toString())}
-                className="flex-1 bg-casino-red/80 border border-casino-redLight text-casino-text py-2.5 rounded-xl text-xs font-display tracking-wider active:scale-95"
-              >
-                MAX
-              </button>
-            </div>
+            <input
+              type="number"
+              value={autoCashout}
+              onChange={(e) => setAutoCashout(e.target.value)}
+              placeholder="Авто × (опционально)"
+              className="w-full bg-casino-bg border border-casino-border/60 rounded-lg px-3 py-3 text-casino-gold text-center font-display tracking-wider text-sm"
+            />
 
             <motion.button
               onClick={handleBet}
@@ -514,17 +455,11 @@ export function Crash() {
                     </span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-casino-muted font-display tracking-wider">
-                      {fmt(b.bet)}
-                    </span>
+                    <span className="text-casino-muted font-display tracking-wider">{fmt(b.bet)}</span>
                     {b.cashed_out_at ? (
-                      <span className="text-casino-greenLight font-display tracking-wider font-bold">
-                        ×{b.cashed_out_at.toFixed(2)}
-                      </span>
+                      <span className="text-casino-greenLight font-display tracking-wider font-bold">×{b.cashed_out_at.toFixed(2)}</span>
                     ) : status === 'crashed' ? (
-                      <span className="text-casino-redLight font-display tracking-wider font-bold">
-                        КРАШ
-                      </span>
+                      <span className="text-casino-redLight font-display tracking-wider font-bold">КРАШ</span>
                     ) : (
                       <span className="text-casino-muted font-display tracking-wider">...</span>
                     )}
@@ -536,7 +471,6 @@ export function Crash() {
         )}
       </div>
 
-      {/* РЕЗУЛЬТАТ ВЫИГРЫША */}
       <AnimatePresence>
         {lastResult && (
           <motion.div

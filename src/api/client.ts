@@ -27,62 +27,62 @@ export async function apiPost<T = any>(path: string, body: any): Promise<T | nul
 }
 
 export const api = {
-  // Профиль
+  // ─── Профиль ───
   getBalance: (userId: number) => apiGet(`/api/balance/${userId}`),
   getProfile: (userId: number) => apiGet(`/api/profile/${userId}`),
 
-  // Магазин
+  // ─── Магазин ───
   getShop: () => apiGet('/api/shop'),
   buyShopItem: (userId: number, itemId: string) =>
     apiPost('/api/shop/buy', { user_id: userId, item_id: itemId }),
 
-  // Кейсы
+  // ─── Кейсы ───
   getCases: () => apiGet('/api/cases'),
   buyCase: (userId: number, caseId: string) =>
     apiPost('/api/cases/buy', { user_id: userId, case_id: caseId }),
   getLastReward: (userId: number) => apiGet(`/api/cases/last_reward/${userId}`),
 
-  // Инвентарь
+  // ─── Инвентарь ───
   getInventory: (userId: number) => apiGet(`/api/inventory/${userId}`),
   sellInventoryItem: (userId: number, invId: string, price: number) =>
     apiPost('/api/inventory/sell', { user_id: userId, inv_id: invId, price }),
 
-  // Джекпот
+  // ─── Джекпот ───
   getJackpot: () => apiGet('/api/jackpot'),
 
-  // Ежедневный бонус
+  // ─── Ежедневный бонус ───
   getDailyStatus: (userId: number) => apiGet(`/api/daily/status/${userId}`),
   claimDaily: (userId: number) => apiPost('/api/daily/claim', { user_id: userId }),
 
-  // Топ
+  // ─── Топ ───
   getTop: (mode: string = 'balance') => apiGet(`/api/top?mode=${mode}`),
 
-  // Рынок
+  // ─── Рынок ───
   getMarketLots: () => apiGet('/api/market/lots'),
   buyMarketLot: (userId: number, lotId: string) =>
     apiPost('/api/market/buy', { user_id: userId, lot_id: lotId }),
   removeMarketLot: (userId: number, lotId: string) =>
     apiPost('/api/market/remove', { user_id: userId, lot_id: lotId }),
 
-  // VIP
+  // ─── VIP ───
   getVipTiers: () => apiGet('/api/vip'),
   buyVip: (userId: number, tierId: number) =>
     apiPost('/api/vip/buy', { user_id: userId, tier_id: tierId }),
 
-  // XP
+  // ─── XP ───
   getXpPacks: () => apiGet('/api/xp'),
   buyXpPack: (userId: number, packId: string) =>
     apiPost('/api/xp/buy', { user_id: userId, pack_id: packId }),
 
-  // Задания
+  // ─── Задания ───
   getQuests: (userId: number) => apiGet(`/api/quests/${userId}`),
   claimQuest: (userId: number, questKey: string) =>
     apiPost('/api/quests/claim', { user_id: userId, quest_key: questKey }),
 
-  // Турнир
+  // ─── Турнир ───
   getTournament: () => apiGet('/api/tournament'),
 
-  // CRASH
+  // ─── CRASH ───
   crashState: () => apiGet('/api/crash/state'),
   crashBet: (userId: number, username: string, bet: number, autoCashout?: number) =>
     apiPost('/api/crash/bet', { user_id: userId, username, bet, auto_cashout: autoCashout }),
@@ -90,12 +90,12 @@ export const api = {
     apiPost('/api/crash/cashout', { user_id: userId }),
   crashHistory: () => apiGet('/api/crash/history'),
 
-  // PLINKO
+  // ─── PLINKO ───
   plinkoPlay: (userId: number, bet: number, risk: string) =>
     apiPost('/api/plinko/play', { user_id: userId, bet, risk }),
   plinkoHistory: () => apiGet('/api/plinko/history'),
 
-  // ═══════════════ ИГРЫ ═══════════════
+  // ─── Игры ───
   gameRoulette: (userId: number, bet: number, choice: string) =>
     apiPost('/api/game/roulette', { user_id: userId, bet, choice }),
 
@@ -113,4 +113,19 @@ export const api = {
 
   minesCashout: (userId: number) =>
     apiPost('/api/game/mines/cashout', { user_id: userId }),
+
+  // ═══════════════ НОВОЕ: КРЕДИТЫ ═══════════════
+  getCredits: (userId: number) => apiGet(`/api/credits/${userId}`),
+  takeCredit: (userId: number, amount: number) =>
+    apiPost('/api/credits/take', { user_id: userId, amount }),
+  returnCredit: (userId: number) =>
+    apiPost('/api/credits/return', { user_id: userId }),
+
+  // ═══════════════ НОВОЕ: TOKENS-ПАКИ ═══════════════
+  getTokensPacks: () => apiGet('/api/tokens-packs'),
+  buyTokensPack: (userId: number, packId: string) =>
+    apiPost('/api/tokens-packs/buy', { user_id: userId, pack_id: packId }),
+
+  // ═══════════════ НОВОЕ: СТАТУС ИГР ═══════════════
+  getGamesStatus: () => apiGet('/api/games/status'),
 }

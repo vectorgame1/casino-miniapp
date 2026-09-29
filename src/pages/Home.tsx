@@ -4,6 +4,7 @@ import { Card } from '../components/Card'
 import { Avatar } from '../components/Avatar'
 import { AnimatedNumber } from '../components/AnimatedNumber'
 import { BonusAnimation } from '../components/BonusAnimation'
+import { InfoModal } from '../components/InfoModal'
 import { useTelegram } from '../hooks/useTelegram'
 import { api } from '../api/client'
 
@@ -31,6 +32,7 @@ export function Home({ onNavigate }: HomeProps) {
   const [claiming, setClaiming] = useState(false)
   const [showMore, setShowMore] = useState(false)
   const [bonusAnim, setBonusAnim] = useState(false)
+  const [showBankInfo, setShowBankInfo] = useState(false)
 
   useEffect(() => {
     if (!userId) {
@@ -80,12 +82,10 @@ export function Home({ onNavigate }: HomeProps) {
     return `${h}ч ${m}мин`
   }
 
-  // XP
   const xp = user?.xp || 0
   const level = Math.floor(xp / 100)
   const xpProgress = xp % 100
 
-  // Ранг (БЕЗ эмодзи, строкой)
   const getRank = (lvl: number): string => {
     if (lvl < 5) return `БРОНЗА ${['I', 'II', 'III'][Math.min(lvl, 2)]}`
     if (lvl < 10) return 'СЕРЕБРО III'
@@ -99,14 +99,9 @@ export function Home({ onNavigate }: HomeProps) {
     return 'ЧЁРНАЯ КАРТА'
   }
 
-  // VIP — название
   const getVipName = (tier: number): string => {
     return {
-      1: 'СЕРЕБРО',
-      2: 'ЗОЛОТО',
-      3: 'ПЛАТИНА',
-      4: 'БРИЛЛИАНТ',
-      5: 'ЧЁРНАЯ',
+      1: 'СЕРЕБРО', 2: 'ЗОЛОТО', 3: 'ПЛАТИНА', 4: 'БРИЛЛИАНТ', 5: 'ЧЁРНАЯ',
     }[tier] || ''
   }
 
@@ -125,39 +120,28 @@ export function Home({ onNavigate }: HomeProps) {
 
   return (
     <div className="p-4 space-y-3 relative">
-      {/* АНИМАЦИЯ БОНУСА */}
-      <BonusAnimation show={bonusAnim} amount={10000} />
+      <BonusAnimation show={bonusAnim} amount={dailyStatus?.amount || 5000} />
 
       {/* ПРОФИЛЬ */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
         <Card className="relative overflow-hidden">
           <div className="absolute top-0 right-0 w-40 h-40 bg-casino-gold/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
-
           <div className="relative flex items-start gap-3">
-            <Avatar
-              photoUrl={photoUrl}
-              username={username}
-              size={56}
-              vipLevel={vipTier}
-              glow={true}
-            />
-
+            <Avatar photoUrl={photoUrl} username={username} size={56} vipLevel={vipTier} glow={true} />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="font-display text-lg tracking-wider truncate text-casino-text">
                   {(firstName || username || 'PLAYER').toUpperCase()}
                 </div>
                 {vipTier > 0 && (
-                  <span className="text-[9px] px-2 py-0.5 rounded bg-casino-gold/15 text-casino-gold border border-casino-gold/40 font-bold tracking-widest uppercase">
+                  <span className="text-[9px] px-2 py-0.5 rounded bg-casino-gold/15 text-casino-gold border border-casino-gold/40 font-display tracking-widest uppercase">
                     VIP {getVipName(vipTier)}
                   </span>
                 )}
               </div>
-
               <div className="text-casino-muted text-[10px] tracking-widest uppercase mt-1">
                 {getRank(level)}
               </div>
-
               <div className="mt-2">
                 <div className="text-casino-muted text-[9px] mb-1 flex justify-between tracking-widest uppercase">
                   <span>XP {xp}</span>
@@ -179,80 +163,44 @@ export function Home({ onNavigate }: HomeProps) {
 
       {/* БАЛАНС И БАНК */}
       <div className="grid grid-cols-2 gap-3">
-        <motion.div
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.1 }}
-        >
+        <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
           <Card className="text-center">
-            {/* SVG-Алмаз */}
-            <svg
-              width="28"
-              height="28"
-              viewBox="0 0 24 24"
-              fill="none"
-              className="mx-auto mb-1.5"
-              stroke="#D4AF37"
-              strokeWidth="1.5"
-            >
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="mx-auto mb-1.5" stroke="#D4AF37" strokeWidth="1.5">
               <path d="M6 3 H18 L22 9 L12 21 L2 9 Z" />
               <path d="M2 9 H22" />
               <path d="M12 21 L9 9 L12 3 L15 9 L12 21" />
             </svg>
             <div className="font-display text-2xl tracking-wider text-casino-gold leading-none">
-              {user?.unlimited ? (
-                '∞'
-              ) : (
-                <AnimatedNumber value={user?.balance || 0} format="short" />
-              )}
+              {user?.unlimited ? '∞' : <AnimatedNumber value={user?.balance || 0} format="short" />}
             </div>
-            <div className="text-[9px] uppercase tracking-widest text-casino-muted mt-1.5">
-              Баланс
-            </div>
+            <div className="text-[9px] uppercase tracking-widest text-casino-muted mt-1.5">Баланс</div>
           </Card>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, x: 10 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.15 }}
-        >
-          <Card className="text-center">
-            {/* SVG-Банк */}
-            <svg
-              width="28"
-              height="28"
-              viewBox="0 0 24 24"
-              fill="none"
-              className="mx-auto mb-1.5"
-              stroke="#E5E5E5"
-              strokeWidth="1.5"
+        <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }}>
+          <Card className="text-center relative" onClick={() => { haptic('light'); setShowBankInfo(true) }}>
+            <button
+              className="absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center rounded-full bg-casino-bg/80 border border-casino-border/60 text-casino-gold text-xs"
+              onClick={(e) => { e.stopPropagation(); haptic('light'); setShowBankInfo(true) }}
             >
+              ?
+            </button>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="mx-auto mb-1.5" stroke="#E5E5E5" strokeWidth="1.5">
               <path d="M3 10 L12 3 L21 10" />
-              <path d="M5 10 V19" />
-              <path d="M9 10 V19" />
-              <path d="M15 10 V19" />
-              <path d="M19 10 V19" />
-              <path d="M3 19 H21" />
-              <path d="M3 22 H21" />
+              <path d="M5 10 V19 M9 10 V19 M15 10 V19 M19 10 V19" />
+              <path d="M3 19 H21 M3 22 H21" />
             </svg>
             <div className="font-display text-2xl tracking-wider text-casino-text leading-none">
               <AnimatedNumber value={user?.bank || 0} format="short" />
             </div>
-            <div className="text-[9px] uppercase tracking-widest text-casino-muted mt-1.5">
-              Банк
-            </div>
+            <div className="text-[9px] uppercase tracking-widest text-casino-muted mt-1.5">Банк</div>
           </Card>
         </motion.div>
       </div>
 
       {/* БОНУС */}
       {dailyStatus?.can_claim ? (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.2 }}
-        >
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}>
           <Card className="border-casino-gold/50 bg-gradient-to-r from-casino-gold/10 to-casino-gold2/5">
             <div className="flex items-center justify-between">
               <div>
@@ -260,7 +208,7 @@ export function Home({ onNavigate }: HomeProps) {
                   БОНУС ДОСТУПЕН
                 </div>
                 <div className="text-casino-muted text-xs mt-1.5 tracking-wide">
-                  +5 000 TOKENS
+                  +{(dailyStatus?.amount || 5000).toLocaleString('ru-RU').replace(/,/g, ' ')} TOKENS
                 </div>
               </div>
               <button
@@ -289,13 +237,7 @@ export function Home({ onNavigate }: HomeProps) {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <Card className="border-casino-greenLight/50 bg-casino-green/10">
             <div className="flex items-center justify-center gap-2">
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="#52B788"
-                className="animate-pulse"
-              >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="#52B788" className="animate-pulse">
                 <path d="M13 2 L4 14 H11 L10 22 L19 10 H12 Z" />
               </svg>
               <div className="font-display tracking-widest text-casino-greenLight text-sm">
@@ -313,12 +255,9 @@ export function Home({ onNavigate }: HomeProps) {
         whileTap={{ scale: 0.98 }}
       >
         <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-casino-gold to-casino-gold2 p-4">
-          {/* Блик */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none" />
-
           <div className="relative flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {/* SVG-Рулетка */}
               <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#0A0A0F" strokeWidth="1.5">
                 <circle cx="12" cy="12" r="10" />
                 <circle cx="12" cy="12" r="6" />
@@ -326,9 +265,7 @@ export function Home({ onNavigate }: HomeProps) {
                 <path d="M12 2 V6 M12 18 V22 M2 12 H6 M18 12 H22" />
               </svg>
               <div className="text-left">
-                <div className="font-display text-casino-bg text-2xl leading-none tracking-wider">
-                  ИГРЫ
-                </div>
+                <div className="font-display text-casino-bg text-2xl leading-none tracking-wider">ИГРЫ</div>
                 <div className="text-casino-bg/70 text-[10px] tracking-widest uppercase mt-0.5">
                   Рулетка · Слоты · Краш · Мины
                 </div>
@@ -387,11 +324,9 @@ export function Home({ onNavigate }: HomeProps) {
                 <path d="M19.4 15 A1.65 1.65 0 0 0 20 13.6 V10.4 A1.65 1.65 0 0 0 19.4 9 L17 7.6 A1.65 1.65 0 0 0 16.6 7 H7.4 A1.65 1.65 0 0 0 7 7.6 L4.6 9 A1.65 1.65 0 0 0 4 10.4 V13.6 A1.65 1.65 0 0 0 4.6 15 L7 16.4 A1.65 1.65 0 0 0 7.4 17 H16.6 A1.65 1.65 0 0 0 17 16.4 Z" />
               </svg>
               <div className="text-left">
-                <div className="font-display text-casino-text text-sm tracking-widest">
-                  ЕЩЁ
-                </div>
+                <div className="font-display text-casino-text text-sm tracking-widest">ЕЩЁ</div>
                 <div className="text-casino-muted text-[10px] tracking-wide">
-                  Кейсы · Турнир · Рынок · Задания
+                  Турнир · Рынок · Задания · VIP
                 </div>
               </div>
             </div>
@@ -417,103 +352,77 @@ export function Home({ onNavigate }: HomeProps) {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
               transition={{ type: 'spring', stiffness: 200, damping: 22 }}
-              className="bg-casino-card border border-casino-border/60 rounded-xl p-5 max-w-sm w-full"
+              className="relative bg-casino-card border border-casino-border/60 rounded-xl p-5 max-w-sm w-full"
               onClick={(e) => e.stopPropagation()}
             >
+              <button
+                onClick={() => setShowMore(false)}
+                className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-lg bg-casino-bg/80 border border-casino-border/60 text-casino-muted active:scale-95 transition-all z-10"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M6 6 L18 18 M18 6 L6 18" />
+                </svg>
+              </button>
+
               <div className="font-display text-casino-gold text-xl text-center mb-4 tracking-widest">
                 ДОПОЛНИТЕЛЬНО
               </div>
+
               <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => {
-                    setShowMore(false)
-                    onNavigate?.('tournament')
-                  }}
-                  className="active:scale-95 transition-transform"
-                >
-                  <Card>
-                    <div className="text-center py-3">
-                      <div className="flex justify-center mb-2">
-                        <QuickIcon name="tournament" />
+                {[
+                  { id: 'tournament', label: 'ТУРНИР', icon: 'tournament' },
+                  { id: 'market', label: 'РЫНОК', icon: 'market' },
+                  { id: 'quests', label: 'ЗАДАНИЯ', icon: 'quests' },
+                  { id: 'vip', label: 'VIP', icon: 'vip' },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => { setShowMore(false); onNavigate?.(item.id) }}
+                    className="active:scale-95 transition-transform"
+                  >
+                    <Card>
+                      <div className="text-center py-3">
+                        <div className="flex justify-center mb-2">
+                          <QuickIcon name={item.icon} />
+                        </div>
+                        <div className="font-display tracking-widest text-xs">
+                          {item.label}
+                        </div>
                       </div>
-                      <div className="font-display tracking-widest text-xs">
-                        ТУРНИР
-                      </div>
-                    </div>
-                  </Card>
-                </button>
-                <button
-                  onClick={() => {
-                    setShowMore(false)
-                    onNavigate?.('market')
-                  }}
-                  className="active:scale-95 transition-transform"
-                >
-                  <Card>
-                    <div className="text-center py-3">
-                      <div className="flex justify-center mb-2">
-                        <QuickIcon name="market" />
-                      </div>
-                      <div className="font-display tracking-widest text-xs">
-                        РЫНОК
-                      </div>
-                    </div>
-                  </Card>
-                </button>
-                <button
-                  onClick={() => {
-                    setShowMore(false)
-                    onNavigate?.('quests')
-                  }}
-                  className="active:scale-95 transition-transform"
-                >
-                  <Card>
-                    <div className="text-center py-3">
-                      <div className="flex justify-center mb-2">
-                        <QuickIcon name="quests" />
-                      </div>
-                      <div className="font-display tracking-widest text-xs">
-                        ЗАДАНИЯ
-                      </div>
-                    </div>
-                  </Card>
-                </button>
-                <button
-                  onClick={() => {
-                    setShowMore(false)
-                    onNavigate?.('cases')
-                  }}
-                  className="active:scale-95 transition-transform"
-                >
-                  <Card>
-                    <div className="text-center py-3">
-                      <div className="flex justify-center mb-2">
-                        <QuickIcon name="cases" />
-                      </div>
-                      <div className="font-display tracking-widest text-xs">
-                        КЕЙСЫ
-                      </div>
-                    </div>
-                  </Card>
-                </button>
+                    </Card>
+                  </button>
+                ))}
               </div>
-              <button
-                onClick={() => setShowMore(false)}
-                className="w-full bg-casino-bg border border-casino-border text-casino-muted font-display tracking-widest py-3 rounded-xl mt-4 text-sm active:scale-95"
-              >
-                ЗАКРЫТЬ
-              </button>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* МОДАЛКА БАНКА */}
+      <InfoModal
+        isOpen={showBankInfo}
+        onClose={() => setShowBankInfo(false)}
+        title="БАНК"
+        icon={
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="1.6">
+            <path d="M3 10 L12 3 L21 10" />
+            <path d="M5 10 V19 M9 10 V19 M15 10 V19 M19 10 V19" />
+            <path d="M3 19 H21 M3 22 H21" />
+          </svg>
+        }
+      >
+        <p>Банк — это хранилище твоих Tokens под проценты.</p>
+        <p><b className="text-casino-gold">Условия:</b></p>
+        <p>• Процент: <b className="text-casino-gold">5% в день</b></p>
+        <p>• Максимум: 100 000 000</p>
+        <p>• Проценты начисляются только до 25 000 000</p>
+        <p>💡 Пополняй — и капает каждый день!</p>
+      </InfoModal>
     </div>
   )
 }
 
-
-// ═══════════════ SVG-ИКОНКИ (инлайн) ═══════════════
-
+// ═══════════════ SVG-ИКОНКИ ═══════════════
 function QuickIcon({ name }: { name: string }) {
   const stroke = '#D4AF37'
   const common = { fill: 'none', stroke, strokeWidth: 1.6, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
@@ -576,13 +485,10 @@ function QuickIcon({ name }: { name: string }) {
           <circle cx="12" cy="12" r="1.5" fill="#D4AF37" />
         </svg>
       )
-    case 'cases':
+    case 'vip':
       return (
-        <svg width="28" height="28" viewBox="0 0 24 24" {...common}>
-          <rect x="3" y="7" width="18" height="14" rx="2" />
-          <path d="M3 11 H21" />
-          <path d="M12 7 V11" />
-          <path d="M9 7 V4 H15 V7" />
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="#D4AF37">
+          <path d="M3 17 L5 7 L10 11 L12 5 L14 11 L19 7 L21 17 Z" />
         </svg>
       )
     default:

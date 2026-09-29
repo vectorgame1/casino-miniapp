@@ -12,6 +12,7 @@ import { Vip } from './pages/Vip'
 import { XP } from './pages/XP'
 import { Quests } from './pages/Quests'
 import { Tournament } from './pages/Tournament'
+import { Credits } from './pages/Credits'
 import { Crash } from './pages/games/Crash'
 import { Plinko } from './pages/games/Plinko'
 
@@ -48,6 +49,7 @@ function App() {
       case 'xp':         return <XP />
       case 'quests':     return <Quests />
       case 'tournament': return <Tournament />
+      case 'credits':    return <Credits />
       case 'crash':      return <Crash />
       case 'plinko':     return <Plinko />
       default:           return <Home onNavigate={handleNavigate} />

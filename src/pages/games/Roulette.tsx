@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card } from '../../components/Card'
+import { BetInput } from '../../components/BetInput'
 import { useTelegram } from '../../hooks/useTelegram'
 import { api } from '../../api/client'
 
@@ -9,7 +10,6 @@ const WHEEL_ORDER = [
   0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10,
   5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26
 ]
-const BET_OPTIONS = [100, 500, 1000, 5000, 10000]
 
 type BetType = 'red' | 'black' | 'green'
 
@@ -20,6 +20,7 @@ interface RouletteProps {
 export function Roulette({ onBack }: RouletteProps) {
   const { userId, haptic, hapticSuccess, hapticError } = useTelegram()
   const [bet, setBet] = useState(1000)
+  const [balance, setBalance] = useState(0)
   const [betType, setBetType] = useState<BetType>('red')
   const [playing, setPlaying] = useState(false)
   const [rotation, setRotation] = useState(0)
@@ -34,8 +35,21 @@ export function Roulette({ onBack }: RouletteProps) {
     return RED.includes(n) ? 'red' : 'black'
   }
 
+  // загрузка баланса
+  useState(() => {
+    if (!userId) return
+    api.getBalance(userId).then((res: any) => {
+      if (res?.balance !== undefined) setBalance(Number(res.balance))
+    })
+  })
+
   const handleSpin = async () => {
     if (playing) return
+    if (bet > balance && balance > 0) {
+      hapticError()
+      alert('Недостаточно средств')
+      return
+    }
     haptic('medium')
     setPlaying(true)
     setResult(null)
@@ -97,7 +111,7 @@ export function Roulette({ onBack }: RouletteProps) {
 
   return (
     <div className="p-4 pb-24">
-      <button onClick={onBack} className="text-casino-muted mb-4 text-xs tracking-widest uppercase">
+      <button onClick={onBack} className="text-casino-muted mb-4 text-[10px] tracking-widest uppercase">
         ← Назад
       </button>
 
@@ -199,26 +213,17 @@ export function Roulette({ onBack }: RouletteProps) {
       {!playing && result === null && (
         <>
           <Card className="mb-3">
-            <div className="text-casino-muted text-[10px] mb-2 tracking-widest uppercase">Ставка</div>
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {BET_OPTIONS.map((b) => (
-                <button
-                  key={b}
-                  onClick={() => { haptic('light'); setBet(b) }}
-                  className={`flex-shrink-0 px-4 py-2 rounded-lg font-display text-sm tracking-wider ${
-                    bet === b
-                      ? 'bg-gradient-to-r from-casino-gold to-casino-gold2 text-casino-bg'
-                      : 'bg-casino-bg border border-casino-border/60 text-casino-muted'
-                  }`}
-                >
-                  {fmtNumber(b)}
-                </button>
-              ))}
-            </div>
+            <BetInput
+              bet={bet}
+              setBet={setBet}
+              balance={balance}
+              minBet={10}
+              gameLabel="Ставка"
+            />
           </Card>
 
           <Card className="mb-3">
-            <div className="text-casino-muted text-[10px] mb-2 tracking-widest uppercase">Куда ставим</div>
+            <div className="text-casino-muted text-[10px] mb-3 tracking-widest uppercase">Куда ставим</div>
             <div className="grid grid-cols-3 gap-2">
               <button
                 onClick={() => { haptic('light'); setBetType('red') }}

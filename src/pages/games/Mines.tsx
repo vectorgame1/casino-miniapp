@@ -1,14 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card } from '../../components/Card'
+import { BetInput } from '../../components/BetInput'
 import { useTelegram } from '../../hooks/useTelegram'
 import { api } from '../../api/client'
 
-const BET_OPTIONS = [100, 500, 1000, 5000, 10000]
 const LEVELS = [
-  { id: 'easy', name: 'ЛЁГКИЙ', mines: 3, color: 'green' },
-  { id: 'medium', name: 'СРЕДНИЙ', mines: 5, color: 'gold' },
-  { id: 'hard', name: 'ХАРДКОР', mines: 10, color: 'red' },
+  { id: 'easy', name: 'ЛЁГКИЙ', mines: 3 },
+  { id: 'medium', name: 'СРЕДНИЙ', mines: 5 },
+  { id: 'hard', name: 'ХАРДКОР', mines: 10 },
 ]
 
 interface MinesProps {
@@ -20,13 +20,26 @@ type Cell = { opened: boolean; mine: boolean; exploded: boolean }
 export function Mines({ onBack }: MinesProps) {
   const { userId, haptic, hapticSuccess, hapticError } = useTelegram()
   const [bet, setBet] = useState(1000)
+  const [balance, setBalance] = useState(0)
   const [level, setLevel] = useState('easy')
   const [playing, setPlaying] = useState(false)
   const [field, setField] = useState<Cell[]>([])
   const [mult, setMult] = useState(1)
   const [result, setResult] = useState<{ win: boolean; amount: number } | null>(null)
 
+  useEffect(() => {
+    if (!userId) return
+    api.getBalance(userId).then((res: any) => {
+      if (res?.balance !== undefined) setBalance(Number(res.balance))
+    })
+  }, [userId])
+
   const startGame = async () => {
+    if (bet > balance && balance > 0) {
+      hapticError()
+      alert('Недостаточно средств')
+      return
+    }
     haptic('medium')
     const res = await api.minesStart(userId, bet, level) as any
     if (!res || res.error) {
@@ -34,13 +47,7 @@ export function Mines({ onBack }: MinesProps) {
       alert(res?.error || 'Ошибка старта')
       return
     }
-
-    const newField: Cell[] = Array.from({ length: 25 }, () => ({
-      opened: false,
-      mine: false,
-      exploded: false,
-    }))
-
+    const newField: Cell[] = Array.from({ length: 25 }, () => ({ opened: false, mine: false, exploded: false }))
     setField(newField)
     setPlaying(true)
     setMult(1)
@@ -108,7 +115,7 @@ export function Mines({ onBack }: MinesProps) {
 
   return (
     <div className="p-4 pb-24">
-      <button onClick={onBack} className="text-casino-muted mb-4 text-xs tracking-widest uppercase">
+      <button onClick={onBack} className="text-casino-muted mb-4 text-[10px] tracking-widest uppercase">
         ← Назад
       </button>
 
@@ -136,11 +143,7 @@ export function Mines({ onBack }: MinesProps) {
                 }`}
               >
                 {cell.opened && (
-                  <motion.div
-                    initial={{ scale: 0, rotate: -180 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    transition={{ duration: 0.3 }}
-                  >
+                  <motion.div initial={{ scale: 0, rotate: -180 }} animate={{ scale: 1, rotate: 0 }} transition={{ duration: 0.3 }}>
                     {cell.mine ? (
                       cell.exploded ? (
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="#E5E5E5">
@@ -148,9 +151,8 @@ export function Mines({ onBack }: MinesProps) {
                         </svg>
                       ) : (
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="#E5E5E5">
-                          <circle cx="12" cy="14" r="7" fill="#E5E5E5" />
+                          <circle cx="12" cy="14" r="7" />
                           <path d="M12 4 L12 7 M8 6 L9 8 M16 6 L15 8" stroke="#E5E5E5" strokeWidth="2" strokeLinecap="round" />
-                          <circle cx="10" cy="12" r="1.5" fill="#8B0000" />
                         </svg>
                       )
                     ) : (
@@ -189,11 +191,7 @@ export function Mines({ onBack }: MinesProps) {
 
       <AnimatePresence>
         {result && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-4 text-center"
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-4 text-center">
             {result.win ? (
               <div className="font-display text-2xl tracking-wider text-casino-greenLight">
                 +{fmtNumber(result.amount - bet)} TOKENS
@@ -210,20 +208,7 @@ export function Mines({ onBack }: MinesProps) {
       {!playing && !result && (
         <>
           <Card className="mt-4">
-            <div className="text-casino-muted text-[10px] mb-2 tracking-widest uppercase">Ставка</div>
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {BET_OPTIONS.map((b) => (
-                <button
-                  key={b}
-                  onClick={() => { haptic('light'); setBet(b) }}
-                  className={`flex-shrink-0 px-4 py-2 rounded-lg font-display text-sm tracking-wider ${
-                    bet === b ? 'bg-gradient-to-r from-casino-gold to-casino-gold2 text-casino-bg' : 'bg-casino-bg border border-casino-border/60 text-casino-muted'
-                  }`}
-                >
-                  {fmtNumber(b)}
-                </button>
-              ))}
-            </div>
+            <BetInput bet={bet} setBet={setBet} balance={balance} minBet={10} gameLabel="Ставка" />
           </Card>
 
           <Card className="mt-3">

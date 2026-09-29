@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card } from '../../components/Card'
+import { BetInput } from '../../components/BetInput'
 import { useTelegram } from '../../hooks/useTelegram'
 import { api } from '../../api/client'
 
 const RISKS = [
-  { id: 'low', name: 'НИЗКИЙ', color: '#52B788', border: 'border-casino-greenLight/50' },
-  { id: 'medium', name: 'СРЕДНИЙ', color: '#D4AF37', border: 'border-casino-gold/50' },
-  { id: 'high', name: 'ВЫСОКИЙ', color: '#C41E3A', border: 'border-casino-redLight/50' },
+  { id: 'low', name: 'НИЗКИЙ', color: '#52B788' },
+  { id: 'medium', name: 'СРЕДНИЙ', color: '#D4AF37' },
+  { id: 'high', name: 'ВЫСОКИЙ', color: '#C41E3A' },
 ]
 
 const MULTIPLIERS: Record<string, number[]> = {
@@ -78,7 +79,7 @@ export function Plinko() {
       visualPath[visualPath.length - 1] = targetPos
 
       for (let i = 0; i < visualPath.length; i++) {
-        await new Promise(r => setTimeout(r, 130))
+        await new Promise(r => setTimeout(r, 180)) // ← ПЛАВНЕЕ (было 130)
         setPath(visualPath.slice(0, i + 1))
       }
 
@@ -144,7 +145,8 @@ export function Plinko() {
                 top: `${(ballRow + 1) * 9}%`,
                 transform: 'translate(-50%, -50%)',
               }}
-              transition={{ duration: 0.13 }}
+              animate={{ left: `${8 + ballPos * 10.5}%`, top: `${(ballRow + 1) * 9}%` }}
+              transition={{ duration: 0.18 }}
             />
           )}
 
@@ -208,10 +210,10 @@ export function Plinko() {
             key={r.id}
             onClick={() => { haptic('light'); setRisk(r.id) }}
             disabled={playing}
-            className={`flex-1 py-3 rounded-lg font-display text-[10px] tracking-widest transition-all ${
+            className={`flex-1 py-3 rounded-lg font-display text-[10px] tracking-widest transition-all border ${
               risk === r.id
-                ? 'bg-gradient-to-r from-casino-gold to-casino-gold2 text-casino-bg shadow-gold'
-                : `bg-casino-card border ${r.border} text-casino-muted`
+                ? 'bg-gradient-to-r from-casino-gold to-casino-gold2 text-casino-bg border-transparent shadow-gold'
+                : 'bg-casino-card border-casino-border/60 text-casino-muted'
             } disabled:opacity-50`}
           >
             {r.name}
@@ -219,26 +221,17 @@ export function Plinko() {
         ))}
       </div>
 
-      <div className="flex gap-2 mb-3">
-        <input
-          type="number"
-          value={bet}
-          onChange={(e) => setBet(e.target.value)}
-          disabled={playing}
-          placeholder="Ставка"
-          className="flex-1 bg-casino-bg border border-casino-border/60 rounded-lg px-4 py-3 text-casino-text text-center font-display tracking-wider disabled:opacity-50"
-        />
-        {[100, 1000, 5000].map((v) => (
-          <button
-            key={v}
-            onClick={() => setBet(v.toString())}
-            disabled={playing}
-            className="bg-casino-bg border border-casino-border/60 text-casino-muted px-3 rounded-lg text-xs font-display tracking-wider disabled:opacity-50"
-          >
-            {v >= 1000 ? `${v / 1000}K` : v}
-          </button>
-        ))}
-      </div>
+      {!playing && (
+        <Card className="mb-3">
+          <BetInput
+            bet={parseInt(bet) || 100}
+            setBet={(v) => setBet(v.toString())}
+            balance={balance}
+            minBet={10}
+            gameLabel="Ставка"
+          />
+        </Card>
+      )}
 
       <button
         onClick={handlePlay}

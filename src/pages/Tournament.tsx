@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Card } from '../components/Card'
+import { useTelegram } from '../hooks/useTelegram'
 import { api } from '../api/client'
+
+interface Player {
+  user_id: number
+  username: string
+  total_won: number
+}
 
 interface TournamentData {
   active: boolean
@@ -10,240 +17,164 @@ interface TournamentData {
   prize_1?: number
   prize_2?: number
   prize_3?: number
-  top?: Array<{ user_id: number; username: string; total_won: number }>
+  top?: Player[]
 }
 
 export function Tournament() {
+  const { userId, haptic } = useTelegram()
   const [data, setData] = useState<TournamentData | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    load()
+    loadTournament()
   }, [])
 
-  const load = async () => {
+  const loadTournament = async () => {
     setLoading(true)
-    const res = await api.getTournament() as TournamentData
-    if (res) setData(res)
+    const res = await api.getTournament()
+    if (res) setData(res as TournamentData)
     setLoading(false)
   }
 
   const fmt = (n: number) => n.toLocaleString('ru-RU').replace(/,/g, ' ')
 
+  const getTimeLeft = (iso?: string): string => {
+    if (!iso) return ''
+    try {
+      const diff = Math.max(0, Math.floor((new Date(iso).getTime() - Date.now()) / 1000))
+      const d = Math.floor(diff / 86400)
+      const h = Math.floor((diff % 86400) / 3600)
+      const m = Math.floor((diff % 3600) / 60)
+      if (d > 0) return `${d} д ${h} ч`
+      return `${h} ч ${m} мин`
+    } catch { return '' }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64 text-casino-muted">
         <div className="text-center">
-          <div className="text-4xl mb-2 animate-pulse">🏆</div>
-          Загрузка турнира...
+          <div className="w-8 h-8 border-2 border-casino-gold/30 border-t-casino-gold rounded-full animate-spin mx-auto mb-3" />
+          <div className="text-[10px] tracking-widest uppercase">Загрузка</div>
         </div>
       </div>
     )
   }
 
-  // 🚨 ТУРНИР НЕ АКТИВЕН
   if (!data?.active) {
     return (
-      <div className="p-4">
-        <div className="text-center mb-4">
-          <h1 className="text-2xl font-bold text-casino-gold">🏆 ТУРНИР</h1>
+      <div className="p-4 pb-24">
+        <div className="text-center mb-6">
+          <h1 className="font-display text-3xl tracking-widest text-casino-gold">ТУРНИР</h1>
         </div>
         <Card>
           <div className="text-center py-12 text-casino-muted">
-            <motion.div
-              animate={{ rotate: [0, 10, -10, 0] }}
-              transition={{ duration: 3, repeat: Infinity }}
-              className="text-6xl mb-4"
-            >
-              😴
-            </motion.div>
-            <div className="font-bold text-lg mb-2">Сейчас нет активного турнира</div>
-            <div className="text-xs mb-4">Следи за анонсами в канале</div>
-            <a
-              href="https://t.me/TokenCasinoTournaments"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block bg-gradient-to-r from-casino-gold to-casino-gold2 text-black font-bold px-6 py-3 rounded-xl active:scale-95 transition-transform"
-            >
-              📢 ПОДПИСАТЬСЯ НА КАНАЛ
-            </a>
+            <div className="flex justify-center mb-4">
+              <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#6B6B7B" strokeWidth="1.2">
+                <path d="M6 3 H18 V8 A6 6 0 0 1 6 8 Z" />
+                <path d="M6 5 H3 A3 3 0 0 0 6 10" />
+                <path d="M18 5 H21 A3 3 0 0 1 18 10" />
+                <path d="M12 14 V18 M8 21 H16" />
+              </svg>
+            </div>
+            <div className="font-display tracking-widest mb-1">НЕТ АКТИВНОГО ТУРНИРА</div>
+            <div className="text-[10px] tracking-wider">Следи за анонсами</div>
           </div>
         </Card>
       </div>
     )
   }
 
-  const endsDate = data.ends_at ? new Date(data.ends_at) : null
-  const endsStr = endsDate
-    ? endsDate.toLocaleString('ru-RU', {
-        day: '2-digit',
-        month: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : '—'
-
-  // Считаем сколько времени осталось до конца
-  const timeLeft = endsDate ? Math.max(0, endsDate.getTime() - Date.now()) : 0
-  const daysLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24))
-  const hoursLeft = Math.floor((timeLeft / (1000 * 60 * 60)) % 24)
-  const minutesLeft = Math.floor((timeLeft / (1000 * 60)) % 60)
-
-  // Процент оставшегося времени (для прогресс-бара)
-  // Предполагаем что турнир длится 7 дней (168 часов)
-  const totalDuration = 7 * 24 * 60 * 60 * 1000
-  const progressPct = Math.max(0, Math.min(100, 100 - (timeLeft / totalDuration) * 100))
-
-  const top = data.top || []
-
   return (
-    <div className="p-4 space-y-4">
-      {/* 🏆 ЗАГОЛОВОК */}
-      <div className="text-center">
-        <h1 className="text-2xl font-bold text-casino-gold">🏆 {data.name || 'ТУРНИР'}</h1>
-        <p className="text-casino-muted text-xs mt-1">⏱ До: {endsStr}</p>
+    <div className="p-4 pb-24">
+      <div className="text-center mb-6">
+        <h1 className="font-display text-3xl tracking-widest text-casino-gold">ТУРНИР</h1>
+        <p className="text-casino-muted text-[10px] tracking-widest uppercase mt-1">
+          {data.name}
+        </p>
       </div>
 
-      {/* ⏰ ТАЙМЕР + ПРОГРЕСС-БАР */}
-      <Card className="border-casino-gold/40">
-        <div className="text-center mb-2">
-          <div className="text-casino-gold text-2xl font-black">
-            {daysLeft}д {hoursLeft}ч {minutesLeft}м
+      {/* ТАЙМЕР */}
+      <Card className="mb-4">
+        <div className="text-center">
+          <div className="text-[10px] tracking-widest uppercase text-casino-muted">До конца</div>
+          <div className="font-display text-2xl tracking-widest text-casino-gold mt-1">
+            {getTimeLeft(data.ends_at)}
           </div>
-          <div className="text-casino-muted text-[10px]">до конца</div>
-        </div>
-        <div className="h-1.5 bg-casino-bg rounded-full overflow-hidden">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${progressPct}%` }}
-            transition={{ duration: 1, ease: 'easeOut' }}
-            className="h-full bg-gradient-to-r from-casino-gold to-casino-gold2"
-          />
         </div>
       </Card>
 
-      {/* 💰 ПРИЗЫ */}
-      <div className="grid grid-cols-3 gap-2">
-        {[
-          { place: 2, medal: '🥈', amount: data.prize_2 || 0, color: 'from-gray-400/20 to-gray-500/20 border-gray-400/50', text: 'text-gray-300' },
-          { place: 1, medal: '🥇', amount: data.prize_1 || 0, color: 'from-yellow-400/30 to-yellow-600/20 border-yellow-400/60', text: 'text-yellow-400' },
-          { place: 3, medal: '🥉', amount: data.prize_3 || 0, color: 'from-orange-500/20 to-orange-600/20 border-orange-500/50', text: 'text-orange-400' },
-        ].map((p) => (
-          <motion.div
-            key={p.place}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: p.place * 0.1 }}
-          >
-            <div className={`rounded-2xl border-2 bg-gradient-to-br ${p.color} p-3 text-center`}>
-              <div className="text-3xl mb-1">{p.medal}</div>
-              <div className={`text-xs font-bold ${p.text} mb-1`}>{p.place} МЕСТО</div>
-              <div className="text-casino-gold font-black text-sm">{fmt(p.amount)}</div>
-            </div>
-          </motion.div>
-        ))}
+      {/* ПРИЗЫ */}
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        <Card className="text-center py-3">
+          <div className="flex justify-center mb-1">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="#D4AF37">
+              <path d="M12 2 L15 8 L22 9 L17 14 L18 21 L12 17.5 L6 21 L7 14 L2 9 L9 8 Z" />
+            </svg>
+          </div>
+          <div className="font-display text-[10px] tracking-widest text-casino-muted">1 МЕСТО</div>
+          <div className="font-display tracking-wider text-casino-gold text-lg">{fmt(data.prize_1 || 0)}</div>
+        </Card>
+        <Card className="text-center py-3">
+          <div className="flex justify-center mb-1">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="#C0C0C0">
+              <path d="M12 2 L15 8 L22 9 L17 14 L18 21 L12 17.5 L6 21 L7 14 L2 9 L9 8 Z" />
+            </svg>
+          </div>
+          <div className="font-display text-[10px] tracking-widest text-casino-muted">2 МЕСТО</div>
+          <div className="font-display tracking-wider text-casino-text text-lg">{fmt(data.prize_2 || 0)}</div>
+        </Card>
+        <Card className="text-center py-3">
+          <div className="flex justify-center mb-1">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="#B87333">
+              <path d="M12 2 L15 8 L22 9 L17 14 L18 21 L12 17.5 L6 21 L7 14 L2 9 L9 8 Z" />
+            </svg>
+          </div>
+          <div className="font-display text-[10px] tracking-widest text-casino-muted">3 МЕСТО</div>
+          <div className="font-display tracking-wider text-casino-text text-lg">{fmt(data.prize_3 || 0)}</div>
+        </Card>
       </div>
 
-      {/* 🏆 ПОДИУМ ТОП-3 */}
-      {top.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <Card className="border-casino-gold/40 bg-gradient-to-br from-casino-gold/5 to-casino-gold2/5">
-            <h2 className="text-center text-casino-gold font-bold text-sm mb-4">
-              🏆 ЛИДЕРЫ
-            </h2>
-
-            {/* Подиум: 2 - 1 - 3 */}
-            <div className="flex items-end justify-center gap-2">
-              {[
-                { idx: 1, place: 2, medal: '🥈', height: 'h-20', color: 'from-gray-400 to-gray-600' },
-                { idx: 0, place: 1, medal: '🥇', height: 'h-28', color: 'from-yellow-400 to-amber-600' },
-                { idx: 2, place: 3, medal: '🥉', height: 'h-16', color: 'from-orange-500 to-orange-700' },
-              ].map((p) => {
-                const player = top[p.idx]
-                if (!player) return <div key={p.place} className="w-20" />
-                return (
-                  <motion.div
-                    key={p.place}
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 + p.idx * 0.1, type: 'spring' }}
-                    className="flex flex-col items-center flex-1 max-w-[90px]"
-                  >
-                    {/* Игрок */}
-                    <div className="text-2xl mb-1">{p.medal}</div>
-                    <div className="text-xs font-bold text-center truncate w-full mb-1">
-                      {player.username}
-                    </div>
-                    <div className="text-casino-gold font-black text-[11px] mb-2">
-                      {fmt(player.total_won)}
-                    </div>
-
-                    {/* Подиум */}
-                    <div className={`w-full ${p.height} bg-gradient-to-t ${p.color} rounded-t-lg flex items-start justify-center pt-2 shadow-lg`}>
-                      <div className="text-white font-black text-lg">{p.place}</div>
-                    </div>
-                  </motion.div>
-                )
-              })}
-            </div>
-          </Card>
-        </motion.div>
-      )}
-
-      {/* 📊 ОСТАЛЬНЫЕ МЕСТА */}
-      {top.length > 3 && (
-        <div className="space-y-2 mt-4">
-          <h2 className="text-center text-casino-muted font-bold text-xs">ОСТАЛЬНЫЕ УЧАСТНИКИ</h2>
-          {top.slice(3).map((p, i) => (
+      {/* ТОП ИГРОКОВ */}
+      <div className="space-y-2">
+        {(data.top || []).map((p, i) => {
+          const rank = i + 1
+          const isMe = p.user_id === userId
+          return (
             <motion.div
               key={p.user_id}
-              initial={{ opacity: 0, x: -10 }}
+              initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.6 + i * 0.05 }}
+              transition={{ delay: i * 0.04 }}
             >
-              <Card>
+              <Card className={isMe ? 'border-casino-gold/60' : ''}>
                 <div className="flex items-center gap-3">
-                  <div className="text-casino-muted font-bold w-8 text-center">
-                    {i + 4}
+                  <div className="w-8 flex justify-center flex-shrink-0">
+                    {rank === 1 ? (
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="#D4AF37"><path d="M12 2 L15 8 L22 9 L17 14 L18 21 L12 17.5 L6 21 L7 14 L2 9 L9 8 Z" /></svg>
+                    ) : rank === 2 ? (
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="#C0C0C0"><path d="M12 2 L15 8 L22 9 L17 14 L18 21 L12 17.5 L6 21 L7 14 L2 9 L9 8 Z" /></svg>
+                    ) : rank === 3 ? (
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="#B87333"><path d="M12 2 L15 8 L22 9 L17 14 L18 21 L12 17.5 L6 21 L7 14 L2 9 L9 8 Z" /></svg>
+                    ) : (
+                      <span className="font-display text-casino-muted tracking-wider text-sm">{rank}</span>
+                    )}
                   </div>
-                  <div className="flex-1 font-bold truncate">
-                    {p.username}
+                  <div className={`font-display tracking-wider flex-1 truncate ${rank <= 3 ? 'text-casino-gold' : 'text-casino-text'}`}>
+                    {isMe ? 'ТЫ' : (p.username || `user_${p.user_id}`)}
                   </div>
-                  <div className="text-casino-gold font-bold text-sm">
-                    {fmt(p.total_won)}
+                  <div className="text-right">
+                    <div className={`font-display tracking-wider text-lg ${rank <= 3 ? 'text-casino-gold' : 'text-casino-text'}`}>
+                      {fmt(p.total_won)}
+                    </div>
+                    <div className="text-[9px] tracking-widest uppercase text-casino-muted">TOKENS</div>
                   </div>
                 </div>
               </Card>
             </motion.div>
-          ))}
-        </div>
-      )}
-
-      {/* 🕳 ПУСТО */}
-      {top.length === 0 && (
-        <Card>
-          <div className="text-center py-8 text-casino-muted">
-            <div className="text-5xl mb-3">🎲</div>
-            <div className="font-bold mb-1">Пока никто не играл</div>
-            <div className="text-xs">Стань первым и получи приз!</div>
-          </div>
-        </Card>
-      )}
-
-      {/* 📢 КНОПКА ПОДЕЛИТЬСЯ */}
-      <motion.a
-        href="https://t.me/TokenCasinoTournaments"
-        target="_blank"
-        rel="noopener noreferrer"
-        whileTap={{ scale: 0.95 }}
-        className="block w-full bg-gradient-to-r from-casino-gold to-casino-gold2 text-black font-bold py-3 rounded-xl text-center mt-4"
-      >
-        📢 СЛЕДИТЬ ЗА ТУРНИРОМ
-      </motion.a>
+          )
+        })}
+      </div>
     </div>
   )
 }
