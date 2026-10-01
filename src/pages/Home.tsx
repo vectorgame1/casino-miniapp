@@ -337,27 +337,30 @@ export function Home({ onNavigate }: HomeProps) {
         </Card>
       </motion.button>
 
-      {/* МОДАЛКА ЕЩЁ */}
+      {/* МОДАЛКА ЕЩЁ (BOTTOM-SHEET) */}
       <AnimatePresence>
         {showMore && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end justify-center"
             onClick={() => setShowMore(false)}
           >
             <motion.div
-              initial={{ y: 100, opacity: 0 }}
+              initial={{ y: '100%', opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 100, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 200, damping: 22 }}
-              className="relative bg-casino-card border border-casino-border/60 rounded-xl p-5 max-w-sm w-full"
+              exit={{ y: '100%', opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 200, damping: 26 }}
+              className="relative bg-casino-card border-t border-casino-border/60 rounded-t-2xl p-5 w-full max-h-[85vh] overflow-y-auto pb-24"
               onClick={(e) => e.stopPropagation()}
             >
+              {/* РУЧКА СВЕРХУ */}
+              <div className="w-12 h-1 bg-casino-border/60 rounded-full mx-auto mb-4" />
+
               <button
                 onClick={() => setShowMore(false)}
-                className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-lg bg-casino-bg/80 border border-casino-border/60 text-casino-muted active:scale-95 transition-all z-10"
+                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-lg bg-casino-bg/80 border border-casino-border/60 text-casino-muted active:scale-95 transition-all z-10"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <path d="M6 6 L18 18 M18 6 L6 18" />
