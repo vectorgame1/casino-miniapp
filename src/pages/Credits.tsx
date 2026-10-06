@@ -54,9 +54,9 @@ export function Credits() {
 
   const handleTake = async () => {
     const amt = parseInt(amount)
-    if (!amt || amt < 50000 || amt > 500000) {
+    if (!amt || amt < 50000 || amt > 200000) {
       hapticError()
-      alert('Сумма от 50 000 до 500 000')
+      alert('Сумма от 50 000 до 200 000')
       return
     }
     haptic('medium')
@@ -137,7 +137,7 @@ export function Credits() {
                 ДОСТУПНО
               </div>
               <div className="text-[10px] tracking-widest uppercase text-casino-muted">
-                Сумма: 50 000 — 500 000
+                Сумма: 50 000 — 200 000
               </div>
               <button
                 onClick={() => { haptic('light'); setShowModal(true) }}
@@ -277,7 +277,7 @@ export function Credits() {
                 СУММА КРЕДИТА
               </div>
               <div className="text-casino-muted text-[10px] tracking-wider text-center mb-3">
-                От 50 000 до 500 000
+                От 50 000 до 200 000
               </div>
               <input
                 type="number"
@@ -286,7 +286,7 @@ export function Credits() {
                 className="w-full bg-casino-bg border border-casino-border/60 rounded-lg px-4 py-3 text-casino-text text-lg text-center font-display tracking-wider"
               />
               <div className="flex gap-2 mt-3">
-                {[50000, 100000, 250000, 500000].map((v) => (
+                {[50000, 100000, 150000, 200000].map((v) => (
                   <button
                     key={v}
                     onClick={() => setAmount(v.toString())}
@@ -331,7 +331,7 @@ export function Credits() {
       >
         <p>Кредит — это Tokens, которые ты берёшь в долг у казино.</p>
         <p><b className="text-casino-gold">Условия:</b></p>
-        <p>• Сумма: <b>50 000 — 500 000</b></p>
+        <p>• Сумма: <b>50 000 — 200 000</b></p>
         <p>• Срок: <b>3 дня</b></p>
         <p>• Процент: <b>0%</b></p>
         <p className="text-casino-redLight">• При просрочке — БЛОКИРОВКА аккаунта</p>
