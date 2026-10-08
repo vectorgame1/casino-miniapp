@@ -5,6 +5,7 @@ import { Avatar } from '../components/Avatar'
 import { AnimatedNumber } from '../components/AnimatedNumber'
 import { BonusAnimation } from '../components/BonusAnimation'
 import { InfoModal } from '../components/InfoModal'
+import { FallingLeaves } from '../components/FallingLeaves'
 import { useTelegram } from '../hooks/useTelegram'
 import { api } from '../api/client'
 
@@ -107,8 +108,9 @@ export function Home({ onNavigate }: HomeProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64 text-casino-muted">
-        <div className="text-center">
+      <div className="relative flex items-center justify-center h-64 text-casino-muted">
+        <FallingLeaves count={15} />
+        <div className="relative z-10 text-center">
           <div className="w-8 h-8 border-2 border-casino-gold/30 border-t-casino-gold rounded-full animate-spin mx-auto mb-3" />
           <div className="text-[10px] uppercase tracking-widest">Загрузка</div>
         </div>
@@ -119,223 +121,240 @@ export function Home({ onNavigate }: HomeProps) {
   const vipTier = user?.vip_tier || 0
 
   return (
-    <div className="p-4 space-y-3 relative">
-      <BonusAnimation show={bonusAnim} amount={dailyStatus?.amount || 5000} />
+    <div className="relative p-4 space-y-3">
+      {/* 🍂 Падающие SVG-листья (осенний сезон) */}
+      <FallingLeaves count={25} />
 
-      {/* ПРОФИЛЬ */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-        <Card className="relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-40 h-40 bg-casino-gold/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
-          <div className="relative flex items-start gap-3">
-            <Avatar photoUrl={photoUrl} username={username} size={56} vipLevel={vipTier} glow={true} />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="font-display text-lg tracking-wider truncate text-casino-text">
-                  {(firstName || username || 'PLAYER').toUpperCase()}
+      {/* Затемнение для читаемости */}
+      <div className="fixed inset-0 bg-black/40 pointer-events-none z-0" />
+
+      {/* Виньетка по краям */}
+      <div
+        className="fixed inset-0 pointer-events-none z-0"
+        style={{
+          background: 'radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.55) 100%)',
+        }}
+      />
+
+      {/* ─── КОНТЕНТ (поверх листьев) ─── */}
+      <div className="relative z-10 space-y-3">
+        <BonusAnimation show={bonusAnim} amount={dailyStatus?.amount || 5000} />
+
+        {/* ПРОФИЛЬ */}
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+          <Card className="relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-40 h-40 bg-casino-gold/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
+            <div className="relative flex items-start gap-3">
+              <Avatar photoUrl={photoUrl} username={username} size={56} vipLevel={vipTier} glow={true} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="font-display text-lg tracking-wider truncate text-casino-text">
+                    {(firstName || username || 'PLAYER').toUpperCase()}
+                  </div>
+                  {vipTier > 0 && (
+                    <span className="text-[9px] px-2 py-0.5 rounded bg-casino-gold/15 text-casino-gold border border-casino-gold/40 font-display tracking-widest uppercase">
+                      VIP {getVipName(vipTier)}
+                    </span>
+                  )}
                 </div>
-                {vipTier > 0 && (
-                  <span className="text-[9px] px-2 py-0.5 rounded bg-casino-gold/15 text-casino-gold border border-casino-gold/40 font-display tracking-widest uppercase">
-                    VIP {getVipName(vipTier)}
-                  </span>
-                )}
-              </div>
-              <div className="text-casino-muted text-[10px] tracking-widest uppercase mt-1">
-                {getRank(level)}
-              </div>
-              <div className="mt-2">
-                <div className="text-casino-muted text-[9px] mb-1 flex justify-between tracking-widest uppercase">
-                  <span>XP {xp}</span>
-                  <span>LVL {level}</span>
+                <div className="text-casino-muted text-[10px] tracking-widest uppercase mt-1">
+                  {getRank(level)}
                 </div>
-                <div className="h-1 bg-casino-bg rounded-full overflow-hidden border border-casino-border/30">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${xpProgress}%` }}
-                    transition={{ duration: 1, ease: 'easeOut' }}
-                    className="h-full bg-gradient-to-r from-casino-gold to-casino-gold2"
-                  />
+                <div className="mt-2">
+                  <div className="text-casino-muted text-[9px] mb-1 flex justify-between tracking-widest uppercase">
+                    <span>XP {xp}</span>
+                    <span>LVL {level}</span>
+                  </div>
+                  <div className="h-1 bg-casino-bg rounded-full overflow-hidden border border-casino-border/30">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${xpProgress}%` }}
+                      transition={{ duration: 1, ease: 'easeOut' }}
+                      className="h-full bg-gradient-to-r from-casino-gold to-casino-gold2"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </Card>
-      </motion.div>
-
-      {/* БАЛАНС И БАНК */}
-      <div className="grid grid-cols-2 gap-3">
-        <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
-          <Card className="text-center">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="mx-auto mb-1.5" stroke="#D4AF37" strokeWidth="1.5">
-              <path d="M6 3 H18 L22 9 L12 21 L2 9 Z" />
-              <path d="M2 9 H22" />
-              <path d="M12 21 L9 9 L12 3 L15 9 L12 21" />
-            </svg>
-            <div className="font-display text-2xl tracking-wider text-casino-gold leading-none">
-              {user?.unlimited ? '∞' : <AnimatedNumber value={user?.balance || 0} format="short" />}
-            </div>
-            <div className="text-[9px] uppercase tracking-widest text-casino-muted mt-1.5">Баланс</div>
           </Card>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }}>
-          <Card className="text-center relative" onClick={() => { haptic('light'); setShowBankInfo(true) }}>
-            <button
-              className="absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center rounded-full bg-casino-bg/80 border border-casino-border/60 text-casino-gold text-xs"
-              onClick={(e) => { e.stopPropagation(); haptic('light'); setShowBankInfo(true) }}
-            >
-              ?
-            </button>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="mx-auto mb-1.5" stroke="#E5E5E5" strokeWidth="1.5">
-              <path d="M3 10 L12 3 L21 10" />
-              <path d="M5 10 V19 M9 10 V19 M15 10 V19 M19 10 V19" />
-              <path d="M3 19 H21 M3 22 H21" />
-            </svg>
-            <div className="font-display text-2xl tracking-wider text-casino-text leading-none">
-              <AnimatedNumber value={user?.bank || 0} format="short" />
-            </div>
-            <div className="text-[9px] uppercase tracking-widest text-casino-muted mt-1.5">Банк</div>
-          </Card>
-        </motion.div>
-      </div>
-
-      {/* БОНУС */}
-      {dailyStatus?.can_claim ? (
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}>
-          <Card className="border-casino-gold/50 bg-gradient-to-r from-casino-gold/10 to-casino-gold2/5">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="font-display tracking-wider text-casino-gold text-lg leading-none">
-                  БОНУС ДОСТУПЕН
-                </div>
-                <div className="text-casino-muted text-xs mt-1.5 tracking-wide">
-                  +{(dailyStatus?.amount || 5000).toLocaleString('ru-RU').replace(/,/g, ' ')} TOKENS
-                </div>
+        {/* БАЛАНС И БАНК */}
+        <div className="grid grid-cols-2 gap-3">
+          <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
+            <Card className="text-center">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="mx-auto mb-1.5" stroke="#D4AF37" strokeWidth="1.5">
+                <path d="M6 3 H18 L22 9 L12 21 L2 9 Z" />
+                <path d="M2 9 H22" />
+                <path d="M12 21 L9 9 L12 3 L15 9 L12 21" />
+              </svg>
+              <div className="font-display text-2xl tracking-wider text-casino-gold leading-none">
+                {user?.unlimited ? '∞' : <AnimatedNumber value={user?.balance || 0} format="short" />}
               </div>
+              <div className="text-[9px] uppercase tracking-widest text-casino-muted mt-1.5">Баланс</div>
+            </Card>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }}>
+            <Card className="text-center relative" onClick={() => { haptic('light'); setShowBankInfo(true) }}>
               <button
-                onClick={handleClaimBonus}
-                disabled={claiming}
-                className="bg-gradient-to-r from-casino-gold to-casino-gold2 text-casino-bg font-display tracking-widest px-4 py-2 rounded-lg text-sm disabled:opacity-50 active:scale-95 transition-transform shadow-gold"
+                className="absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center rounded-full bg-casino-bg/80 border border-casino-border/60 text-casino-gold text-xs"
+                onClick={(e) => { e.stopPropagation(); haptic('light'); setShowBankInfo(true) }}
               >
-                {claiming ? '...' : 'ЗАБРАТЬ'}
+                ?
               </button>
-            </div>
-          </Card>
-        </motion.div>
-      ) : dailyStatus ? (
-        <Card>
-          <div className="text-casino-muted text-xs text-center tracking-wide">
-            СЛЕДУЮЩИЙ БОНУС ЧЕРЕЗ{' '}
-            <span className="text-casino-text font-bold tracking-widest">
-              {formatTime(dailyStatus.time_left)}
-            </span>
-          </div>
-        </Card>
-      ) : null}
-
-      {/* БУСТ */}
-      {user?.boost ? (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <Card className="border-casino-greenLight/50 bg-casino-green/10">
-            <div className="flex items-center justify-center gap-2">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="#52B788" className="animate-pulse">
-                <path d="M13 2 L4 14 H11 L10 22 L19 10 H12 Z" />
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="mx-auto mb-1.5" stroke="#E5E5E5" strokeWidth="1.5">
+                <path d="M3 10 L12 3 L21 10" />
+                <path d="M5 10 V19 M9 10 V19 M15 10 V19 M19 10 V19" />
+                <path d="M3 19 H21 M3 22 H21" />
               </svg>
-              <div className="font-display tracking-widest text-casino-greenLight text-sm">
-                БУСТ ×{user.boost.mult} АКТИВЕН
+              <div className="font-display text-2xl tracking-wider text-casino-text leading-none">
+                <AnimatedNumber value={user?.bank || 0} format="short" />
               </div>
-            </div>
-          </Card>
-        </motion.div>
-      ) : null}
-
-      {/* КНОПКА ИГРЫ */}
-      <motion.button
-        onClick={() => handleCardClick('games')}
-        className="w-full active:scale-[0.98] transition-transform"
-        whileTap={{ scale: 0.98 }}
-      >
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-casino-gold to-casino-gold2 p-4">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none" />
-          <div className="relative flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#0A0A0F" strokeWidth="1.5">
-                <circle cx="12" cy="12" r="10" />
-                <circle cx="12" cy="12" r="6" />
-                <circle cx="12" cy="12" r="2" fill="#0A0A0F" />
-                <path d="M12 2 V6 M12 18 V22 M2 12 H6 M18 12 H22" />
-              </svg>
-              <div className="text-left">
-                <div className="font-display text-casino-bg text-2xl leading-none tracking-wider">ИГРЫ</div>
-                <div className="text-casino-bg/70 text-[10px] tracking-widest uppercase mt-0.5">
-                  Рулетка · Слоты · Краш · Мины
-                </div>
-              </div>
-            </div>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0A0A0F" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M9 6 L15 12 L9 18" />
-            </svg>
-          </div>
+              <div className="text-[9px] uppercase tracking-widest text-casino-muted mt-1.5">Банк</div>
+            </Card>
+          </motion.div>
         </div>
-      </motion.button>
 
-      {/* БЫСТРЫЕ КНОПКИ */}
-      <div className="grid grid-cols-2 gap-3">
-        {[
-          { id: 'shop', label: 'МАГАЗИН', icon: 'shop' },
-          { id: 'credits', label: 'КРЕДИТЫ', icon: 'credits' },
-          { id: 'inventory', label: 'СКЛАД', icon: 'inventory' },
-          { id: 'top', label: 'ТОП', icon: 'top' },
-        ].map((btn, i) => (
-          <motion.button
-            key={btn.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 + i * 0.05 }}
-            onClick={() => handleCardClick(btn.id)}
-            className="active:scale-95 transition-transform text-left"
-          >
-            <Card>
-              <div className="text-center py-3">
-                <div className="flex justify-center mb-2">
-                  <QuickIcon name={btn.icon} />
+        {/* БОНУС */}
+        {dailyStatus?.can_claim ? (
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}>
+            <Card className="border-casino-gold/50 bg-gradient-to-r from-casino-gold/10 to-casino-gold2/5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-display tracking-wider text-casino-gold text-lg leading-none">
+                    БОНУС ДОСТУПЕН
+                  </div>
+                  <div className="text-casino-muted text-xs mt-1.5 tracking-wide">
+                    +{(dailyStatus?.amount || 5000).toLocaleString('ru-RU').replace(/,/g, ' ')} TOKENS
+                  </div>
                 </div>
-                <div className="font-display tracking-widest text-casino-text text-xs">
-                  {btn.label}
+                <button
+                  onClick={handleClaimBonus}
+                  disabled={claiming}
+                  className="bg-gradient-to-r from-casino-gold to-casino-gold2 text-casino-bg font-display tracking-widest px-4 py-2 rounded-lg text-sm disabled:opacity-50 active:scale-95 transition-transform shadow-gold"
+                >
+                  {claiming ? '...' : 'ЗАБРАТЬ'}
+                </button>
+              </div>
+            </Card>
+          </motion.div>
+        ) : dailyStatus ? (
+          <Card>
+            <div className="text-casino-muted text-xs text-center tracking-wide">
+              СЛЕДУЮЩИЙ БОНУС ЧЕРЕЗ{' '}
+              <span className="text-casino-text font-bold tracking-widest">
+                {formatTime(dailyStatus.time_left)}
+              </span>
+            </div>
+          </Card>
+        ) : null}
+
+        {/* БУСТ */}
+        {user?.boost ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <Card className="border-casino-greenLight/50 bg-casino-green/10">
+              <div className="flex items-center justify-center gap-2">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="#52B788" className="animate-pulse">
+                  <path d="M13 2 L4 14 H11 L10 22 L19 10 H12 Z" />
+                </svg>
+                <div className="font-display tracking-widest text-casino-greenLight text-sm">
+                  БУСТ ×{user.boost.mult} АКТИВЕН
                 </div>
               </div>
             </Card>
-          </motion.button>
-        ))}
-      </div>
+          </motion.div>
+        ) : null}
 
-      {/* КНОПКА ЕЩЁ */}
-      <motion.button
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-        onClick={() => handleCardClick('more')}
-        className="w-full active:scale-95 transition-transform"
-      >
-        <Card>
-          <div className="flex items-center justify-between py-1">
-            <div className="flex items-center gap-3">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="1.8">
-                <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15 A1.65 1.65 0 0 0 20 13.6 V10.4 A1.65 1.65 0 0 0 19.4 9 L17 7.6 A1.65 1.65 0 0 0 16.6 7 H7.4 A1.65 1.65 0 0 0 7 7.6 L4.6 9 A1.65 1.65 0 0 0 4 10.4 V13.6 A1.65 1.65 0 0 0 4.6 15 L7 16.4 A1.65 1.65 0 0 0 7.4 17 H16.6 A1.65 1.65 0 0 0 17 16.4 Z" />
-              </svg>
-              <div className="text-left">
-                <div className="font-display text-casino-text text-sm tracking-widest">ЕЩЁ</div>
-                <div className="text-casino-muted text-[10px] tracking-wide">
-                  Турнир · Рынок · Задания · VIP
+        {/* КНОПКА ИГРЫ */}
+        <motion.button
+          onClick={() => handleCardClick('games')}
+          className="w-full active:scale-[0.98] transition-transform"
+          whileTap={{ scale: 0.98 }}
+        >
+          <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-casino-gold to-casino-gold2 p-4">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none" />
+            <div className="relative flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#0A0A0F" strokeWidth="1.5">
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="6" />
+                  <circle cx="12" cy="12" r="2" fill="#0A0A0F" />
+                  <path d="M12 2 V6 M12 18 V22 M2 12 H6 M18 12 H22" />
+                </svg>
+                <div className="text-left">
+                  <div className="font-display text-casino-bg text-2xl leading-none tracking-wider">ИГРЫ</div>
+                  <div className="text-casino-bg/70 text-[10px] tracking-widest uppercase mt-0.5">
+                    Рулетка · Слоты · Краш · Мины
+                  </div>
                 </div>
               </div>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0A0A0F" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M9 6 L15 12 L9 18" />
+              </svg>
             </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round">
-              <path d="M9 6 L15 12 L9 18" />
-            </svg>
           </div>
-        </Card>
-      </motion.button>
+        </motion.button>
+
+        {/* БЫСТРЫЕ КНОПКИ */}
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { id: 'shop', label: 'МАГАЗИН', icon: 'shop' },
+            { id: 'credits', label: 'КРЕДИТЫ', icon: 'credits' },
+            { id: 'inventory', label: 'СКЛАД', icon: 'inventory' },
+            { id: 'top', label: 'ТОП', icon: 'top' },
+          ].map((btn, i) => (
+            <motion.button
+              key={btn.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 + i * 0.05 }}
+              onClick={() => handleCardClick(btn.id)}
+              className="active:scale-95 transition-transform text-left"
+            >
+              <Card>
+                <div className="text-center py-3">
+                  <div className="flex justify-center mb-2">
+                    <QuickIcon name={btn.icon} />
+                  </div>
+                  <div className="font-display tracking-widest text-casino-text text-xs">
+                    {btn.label}
+                  </div>
+                </div>
+              </Card>
+            </motion.button>
+          ))}
+        </div>
+
+        {/* КНОПКА ЕЩЁ */}
+        <motion.button
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          onClick={() => handleCardClick('more')}
+          className="w-full active:scale-95 transition-transform"
+        >
+          <Card>
+            <div className="flex items-center justify-between py-1">
+              <div className="flex items-center gap-3">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="1.8">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M19.4 15 A1.65 1.65 0 0 0 20 13.6 V10.4 A1.65 1.65 0 0 0 19.4 9 L17 7.6 A1.65 1.65 0 0 0 16.6 7 H7.4 A1.65 1.65 0 0 0 7 7.6 L4.6 9 A1.65 1.65 0 0 0 4 10.4 V13.6 A1.65 1.65 0 0 0 4.6 15 L7 16.4 A1.65 1.65 0 0 0 7.4 17 H16.6 A1.65 1.65 0 0 0 17 16.4 Z" />
+                </svg>
+                <div className="text-left">
+                  <div className="font-display text-casino-text text-sm tracking-widest">ЕЩЁ</div>
+                  <div className="text-casino-muted text-[10px] tracking-wide">
+                    Турнир · Рынок · Задания · VIP
+                  </div>
+                </div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round">
+                <path d="M9 6 L15 12 L9 18" />
+              </svg>
+            </div>
+          </Card>
+        </motion.button>
+      </div>
 
       {/* МОДАЛКА ЕЩЁ (BOTTOM-SHEET) */}
       <AnimatePresence>
@@ -355,7 +374,6 @@ export function Home({ onNavigate }: HomeProps) {
               className="relative bg-casino-card border-t border-casino-border/60 rounded-t-2xl p-5 w-full max-h-[85vh] overflow-y-auto pb-24"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* РУЧКА СВЕРХУ */}
               <div className="w-12 h-1 bg-casino-border/60 rounded-full mx-auto mb-4" />
 
               <button
